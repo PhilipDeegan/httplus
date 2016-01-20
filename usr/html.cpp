@@ -73,7 +73,7 @@ class Index : public httplus::Page{
             // "this" is a now a copy of the original
         }
         virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){
-            // called before render
+            // called after render
             // "this" is disposed of shortly after this method
         }
 };
