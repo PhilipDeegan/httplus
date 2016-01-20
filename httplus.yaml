@@ -1,0 +1,19 @@
+
+
+
+http:
+  - root: /var/www/global       # no default, mandatory
+    host: localhost             # missing assumed default for port
+    port: 8888                  # default 80
+    home: index                 # optional default page/generator
+  - root: /var/www/global       # no default, mandatory
+    port: 8888                  # default 80
+    home: index                 # optional default page/generator
+
+# https:
+#   - root: /var/www/global       # no default, mandatory
+#     host: localhost             # missing assumed default
+#     port: 443                   # default 443
+#     home: index                 # optional default page/generator
+#     crt:  /path/to/site.crt     # no default, mandatory
+#     key:  /path/to/site.key     # no default, mandatory

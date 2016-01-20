@@ -1,0 +1,12 @@
+
+
+name: httplus
+
+inc: ./inc
+src: ./src ./usr
+dep: 
+  - name: mkn.ram
+    version: master
+  - name: parse.yaml
+    version: 0.5.5
+main: cpp.cpp

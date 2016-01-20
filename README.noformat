@@ -1,0 +1,42 @@
+httplus
+
+Cross platform http/https C++ object web server
+
+
+Rules
+
+All html/css/etc files must be contained under ${root}/pub.
+	e.g. /var/www/pub/index.html
+If the resourcec is a file, that is found, it is rendered.
+Otherwise it is used to check the html generator objects.
+
+Generator objects are stored and retrieved using a hash of the root directory path as the key.
+
+Files are served in binary mode, unless the filetype is contained within:
+std::vector<std::string> httplus::http::Reponder::TXT
+Found at the top of ./src/http/responsder.cpp
+
+## Configure
+
+sites.yaml:
+
+http:
+  - root: /var/www/global       # no default, mandatory
+    host: localhost             # missing assumed default configuration
+    port: 8888                  # default 80
+    home: index                 # optional default page
+  - root: /var/www/global       # no default, mandatory
+    port: 8888                  # default 80
+    home: index                 # optional default page
+
+https:
+  - root: /var/www/global       # no default, mandatory
+    host: localhost             # missing assumed default
+    port: 443                   # default 443
+    home: index                 # optional default page
+    crt:  /path/to/site.crt     # no default, mandatory
+    key:  /path/to/site.key     # no default, mandatory
+
+## Generation
+
+See ./usr/html.cpp
