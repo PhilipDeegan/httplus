@@ -7,8 +7,8 @@ Rules
 
 All html/css/etc files must be contained under ${root}/pub.
 	e.g. /var/www/pub/index.html
-If the resourcec is a file, that is found, it is rendered.
-Otherwise it is used to check the html generator objects.
+If the resource is a file, that is found, it is rendered.
+Otherwise it is used as a key to check for generators.
 
 Generator objects are stored and retrieved using a hash of the root directory path as the key.
 
