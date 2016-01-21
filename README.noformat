@@ -18,7 +18,7 @@ Found at the top of ./src/http/responsder.cpp
 
 ## Configure
 
-sites.yaml:
+httplus.yaml:
 
 http:
   - root: /var/www/global       # no default, mandatory
@@ -31,7 +31,7 @@ http:
 
 https:
   - root: /var/www/global       # no default, mandatory
-    host: localhost             # missing assumed default
+    host: localhost             # no default, mandatory
     port: 443                   # default 443
     home: index                 # optional default page
     crt:  /path/to/site.crt     # no default, mandatory
