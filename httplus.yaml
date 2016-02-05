@@ -12,7 +12,7 @@ http:
 
 # https:
 #   - root: /var/www/global       # no default, mandatory
-#     host: localhost             # missing assumed default
+#     host: localhost             # no default, mandatory
 #     port: 443                   # default 443
 #     home: index                 # optional default page/generator
 #     crt:  /path/to/site.crt     # no default, mandatory

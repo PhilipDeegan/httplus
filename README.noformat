@@ -7,8 +7,8 @@ Rules
 
 All html/css/etc files must be contained under ${root}/pub.
 	e.g. /var/www/pub/index.html
-If the resourcec is a file, that is found, it is rendered.
-Otherwise it is used to check the html generator objects.
+If the resource is a file, that is found, it is rendered.
+Otherwise it is used as a key to check for generators.
 
 Generator objects are stored and retrieved using a hash of the root directory path as the key.
 
@@ -18,7 +18,7 @@ Found at the top of ./src/http/responsder.cpp
 
 ## Configure
 
-sites.yaml:
+httplus.yaml:
 
 http:
   - root: /var/www/global       # no default, mandatory
@@ -31,7 +31,7 @@ http:
 
 https:
   - root: /var/www/global       # no default, mandatory
-    host: localhost             # missing assumed default
+    host: localhost             # no default, mandatory
     port: 443                   # default 443
     home: index                 # optional default page
     crt:  /path/to/site.crt     # no default, mandatory
