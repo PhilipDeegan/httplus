@@ -37,24 +37,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace httplus{
 
-class Page;
-class Head{
-    private:
-        std::vector<std::shared_ptr<kul::html4::Tag>> hs;
-        Head();
-        const std::vector<std::shared_ptr<kul::html4::Tag>>& heads() { return hs; }
-        static Head& INSTANCE(){
-            static Head i;
-            return i;
-        }
-        friend class Page;
-};
-
 class Page : public kul::html4::Page{
     public:
-        Page(){
-            for(const auto& h : Head::INSTANCE().heads()) head(h);
-        }
         virtual void pre (const kul::http::ARequest& req){}
         virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){}
 };

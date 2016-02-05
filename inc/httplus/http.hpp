@@ -95,7 +95,6 @@ class Server : public kul::http::Server{
         Server(const uint16_t& p, const Pages& ps) 
         	: kul::http::Server(p), ps(ps){}
         void stop(){
-            KLOG(DBG) << "STOPPING SERVER!";
             kul::http::Server::stop();
         }
         friend class kul::ThreadRef<Server>;
@@ -120,7 +119,6 @@ class Server : public kul::https::Server{
         Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key) 
         	: kul::https::Server(p, crt, key), ps(ps){}
         void stop(){
-            KLOG(DBG) << "STOPPING SERVER!";
             kul::https::Server::stop();
         }
         friend class kul::ThreadRef<Server>;

@@ -28,14 +28,15 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#ifndef _HTTPLUS_HPP_
+#define _HTTPLUS_HPP_
+
 #include "kul/log.hpp"
 #include "kul/threads.hpp"
 
 #include "httplus/http.hpp"
 #include "httplus/html.hpp"
 #include "httplus/yaml.hpp"
-
-int main(int argc, char* argv[]);
 
 namespace httplus{
 
@@ -47,11 +48,12 @@ class Exception : public kul::Exception{
 class App{
     private:
         httplus::yaml::Conf config;
-
+    public:
         App() : config(httplus::yaml::Conf::CREATE()){}
         void load(kul::hash::map::S2T<std::shared_ptr<http::Server>>& http,
             kul::hash::map::S2T<std::shared_ptr<https::Server>>& https, Sites& sites);
-        friend int ::main(int argc, char* argv[]);
 };
 
 }
+
+#endif /* _HTTPLUS_HPP_ */

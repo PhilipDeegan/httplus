@@ -30,18 +30,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus/yaml.hpp"
 
-// Default head tags
-httplus::Head::Head(){
-    auto css(std::make_shared<kul::html4::tag::Named>("link"));
-    css->attribute("rel" , "stylesheet");
-    css->attribute("type", "text/css");
-    css->attribute("href", "res/css.css");
-    hs.push_back(css);
+class Head : public httplus::Page{
+    public:
+        Head(){
+            auto css(std::make_shared<kul::html4::tag::Named>("link"));
+            css->attribute("rel" , "stylesheet");
+            css->attribute("type", "text/css");
+            css->attribute("href", "res/css.css");
+            head(css);
+            head(std::make_shared<kul::html4::Text>("<link rel=\"icon\" type=\"image/png\" href=\"data:;base64,iVBORw0KGgo=\" >"));
+        }
+};
 
-    hs.push_back(std::make_shared<kul::html4::Text>("<link rel=\"icon\" type=\"image/png\" href=\"data:;base64,iVBORw0KGgo=\" >"));
-}
-
-class Index : public httplus::Page{
+class Index : public Head{
     public:
         Index(){
             // A BASIC SETUP FOR ALL INSTANCES OF THIS TYPE
