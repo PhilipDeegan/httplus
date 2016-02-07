@@ -28,8 +28,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _HTTPLUS_CONF_HPP_
-#define _HTTPLUS_CONF_HPP_
+#ifndef _HTTPLUS_YAML_HPP_
+#define _HTTPLUS_YAML_HPP_
 
 #include "kul/yaml.hpp"
 
@@ -48,7 +48,7 @@ class Conf : public kul::yaml::File {
     protected:      
         Conf(const kul::Dir d) : kul::yaml::File(d.join("httplus.yaml")), d(d){}
         static Conf CREATE(const kul::Dir& d){
-            kul::File f("mkn.yaml", d);
+            kul::File f("httplus.yaml", d);
             if(!f.is()) KEXCEPTION("httplus,yaml does not exist:\n" + f.full());
             return kul::yaml::File::CREATE<Conf>(d.path());
         }
@@ -82,4 +82,4 @@ class Conf : public kul::yaml::File {
 
 
 }}
-#endif /* _HTTPLUS_CONF_HPP_ */
+#endif /* _HTTPLUS_YAML_HPP_ */
