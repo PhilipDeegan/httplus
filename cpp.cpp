@@ -32,6 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "httplus.hpp"
 
+std::vector<std::string> httplus::http::Reponder::TXT = {"xml", "txt", "html", "css"};
+
 int main(int argc, char* argv[]) {
     kul::Signal sig;
     httplus::App a;

@@ -3,7 +3,7 @@
 name: httplus
 
 inc: ./inc
-src: ./src ./usr
+src: ./usr
 dep: 
   - name: mkn.ram
     version: master
