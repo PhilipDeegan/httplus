@@ -2,11 +2,18 @@
 
 name: httplus
 
-inc: ./inc
-src: ./usr
-dep: 
-  - name: mkn.ram
-    version: master
-  - name: parse.yaml
-    version: 0.5.5
-main: cpp.cpp
+parent: c
+
+profile:
+  - name: c
+    inc: ./inc
+    dep: 
+      - name: mkn.ram
+        version: master
+      - name: parse.yaml
+        version: 0.5.5
+
+  - name: test
+    parent: c
+    src: ./usr
+    main: test.cpp

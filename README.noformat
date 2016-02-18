@@ -14,7 +14,7 @@ Generator objects are stored and retrieved using a hash of the root directory pa
 
 Files are served in binary mode, unless the filetype is contained within:
 std::vector<std::string> httplus::http::Reponder::TXT
-Found at the top of ./cpp.cpp
+Found at the top of ./test.cpp
 
 ## Configure
 
