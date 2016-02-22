@@ -38,14 +38,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace httplus{
 
 class Page : public kul::html4::Page{
+	protected:
+    	template <class T> std::shared_ptr<T> clone(const T& src){
+			return std::make_shared<T>();
+		}
     public:
+    	virtual std::shared_ptr<Page> clone() = 0 ;//{ return clone(*this); }
         virtual void pre (const kul::http::ARequest& req){}
         virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){}
 };
 typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
 typedef kul::hash::map::S2T<std::shared_ptr<Pages>> Sites;
-
-
 
 }
 #endif /* _HTTPLUS_PAGE_HPP_ */

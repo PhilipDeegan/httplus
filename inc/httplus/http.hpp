@@ -107,12 +107,12 @@ class Reponder{
                     res.body(ss.str());
                 }else
                 if(ps.count(r)) {
-                    auto p = (*ps.find(r)).second;
+                    auto p((*ps.find(r)).second->clone());
                     p->pre(req);
                     res.body(*p->render());
                     p->post(req, res);
                 } else e = 1;
-                if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
+                //if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
             }else KEXCEPT(kul::http::Exception, "HTTP RESPONSE DENIED");
             if(e) res.body("ERROR");
             if(!res.header("Content-Type"))res.header("Content-Type", ct);
