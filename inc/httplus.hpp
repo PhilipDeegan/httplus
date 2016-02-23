@@ -88,20 +88,16 @@ class App{
                     if(!key) KEXCEPTION("File does not exist: " + key.full());
                     https::Server* ser = {0};
                     const std::string& port(c["port"] ? c["port"].Scalar() : "443");
-                    if(!sites.count(std::to_string(std::hash<std::string>()(d.real())))) {
-                        KOUT(NON) << "WARN: NO GENERATORS FOR HTTPS ROOT: " << d;
+                    const std::string hsh(std::to_string(std::hash<std::string>()(d.real())));
+                    if(!sites.count(hsh)) {
+                        KERR << "WARN: NO GENERATORS FOR HTTPS ROOT: " << d;
                         continue; 
                     }
-                    const std::string hsh(std::to_string(std::hash<std::string>()(d.real())));
-                    if(sites.count(hsh)){
-                        const Pages& pages((*sites.find(hsh)).second);
-                        https.insert(port, std::make_shared<https::Server>(kul::Type::GET_UINT(port), pages, crt, key));
-                        ser = https[port].get();
-                        std::string home(c["home"] ? c["home"].Scalar() : "");
-                        ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
-                    }else{
-                        KERR << "NO generator pages configured for directory: " << d.real();
-                    }
+                    const Pages& pages((*sites.find(hsh)).second);
+                    https.insert(port, std::make_shared<https::Server>(kul::Type::GET_UINT(port), pages, crt, key));
+                    ser = https[port].get();
+                    std::string home(c["home"] ? c["home"].Scalar() : "");
+                    ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
                 }
         }
 };
