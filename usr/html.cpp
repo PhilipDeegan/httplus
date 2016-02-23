@@ -53,10 +53,10 @@ class Index : public Head{
             std::shared_ptr<kul::html4::Tag> txt(std::make_shared<kul::html4::tag::Label>("SOME TEXT HERE"));
             std::string e("& < > \" ' / / ' \" > < &");
             kul::HTML::ESC(e);
-            div->tag(txt).br().tag(std::make_shared<kul::html4::tag::Label>(e));
+            div->add(txt).br().add(std::make_shared<kul::html4::tag::Label>(e));
             body(div);
             std::shared_ptr<kul::html4::Tag> div1(std::make_shared<kul::html4::tag::Named>("div"));
-            div1->attribute("class", "body").tag(std::make_shared<kul::html4::esc::Text>("& < > \" ' / / ' \" > < &"));
+            div1->attribute("class", "body").add(std::make_shared<kul::html4::esc::Text>("& < > \" ' / / ' \" > < &"));
 
             std::shared_ptr<kul::html4::Tag> p(std::make_shared<kul::html4::tag::Named>("p", "Enter the competition by "));
             std::shared_ptr<kul::html4::Tag> r(std::make_shared<kul::html4::tag::Named>("mark", "January 30, 2011"));
@@ -64,11 +64,12 @@ class Index : public Head{
             std::shared_ptr<kul::html4::Tag> b(std::make_shared<kul::html4::tag::Named>("mark", "summer"));
             b->attribute("class", "blue");
             
-            p->tag(r).text(" and you could win up to $$$$ — including amazing ")
-                .tag(b).text(" trips!")
+            p->add(r).text(" and you could win up to $$$$ — including amazing ")
+                .add(b).text(" trips!")
                 .esc("& < > \" ' / / ' \" > < &");
             body(p).body(div);
         }
+        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
         virtual void pre (const kul::http::ARequest& req){
             // called before render
             // "this" is a now a copy of the original
@@ -117,6 +118,7 @@ mark.blue {
     background: none;
 })";
         }
+        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
         virtual const std::string* render(){
             return &s;
         }
@@ -127,17 +129,8 @@ mark.blue {
 
 // This method is to setup generated pages
 void httplus::yaml::Conf::LOAD(Sites& sites){
-    auto css = std::make_shared<CSS>();
-    auto index = std::make_shared<Index>();
-    
-    auto global = std::make_shared<Pages>();
-    global->insert("index", index);
-    global->insert("res/css.css", css);
-
-    auto local = std::make_shared<Pages>();
-    local->insert("index", index);
-    local->insert("res/css.css", css);
-    
-    sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), global);
-    sites.insert(std::to_string(std::hash<std::string>()("/var/www/local")) , local);
+    Pages glbP;
+    glbP.insert("index", std::make_shared<Index>());
+    glbP.insert("res/css.css", std::make_shared<CSS>());
+    sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), glbP);
 }

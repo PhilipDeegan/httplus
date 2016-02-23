@@ -67,7 +67,7 @@ class App{
                     if(!c["host"]){
                         defHttp = std::make_shared<http::Conf>(c["root"].Scalar(), home);
                     }else if(sites.count(std::to_string(std::hash<std::string>()(d.real())))){
-                        const Pages& pages(*(*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second.get());
+                        const Pages& pages((*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second);
                         http.insert(port, std::make_shared<http::Server>(kul::Type::GET_UINT(port), pages));
                         ser = http[port].get();
                         ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
@@ -92,7 +92,7 @@ class App{
                         KOUT(NON) << "WARN: NO GENERATORS FOR HTTPS ROOT: " << d;
                         continue; 
                     }
-                    const Pages& pages(*(*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second.get());
+                    const Pages& pages((*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second);
                     if(!https.count(port)) 
                         https.insert(port, std::make_shared<https::Server>(kul::Type::GET_UINT(port), pages, crt, key));
                     ser = https[port].get();

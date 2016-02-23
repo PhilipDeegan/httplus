@@ -48,7 +48,14 @@ class Page : public kul::html4::Page{
         virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){}
 };
 typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
-typedef kul::hash::map::S2T<std::shared_ptr<Pages>> Sites;
+
+class XXXError{
+    public:
+        virtual void recover(Page& e) = 0;
+};
+
+typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
+typedef kul::hash::map::S2T<Pages> Sites;
 
 }
 #endif /* _HTTPLUS_PAGE_HPP_ */

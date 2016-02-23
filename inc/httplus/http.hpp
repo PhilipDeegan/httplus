@@ -108,9 +108,22 @@ class Reponder{
                 }else
                 if(ps.count(r)) {
                     auto p((*ps.find(r)).second->clone());
-                    p->pre(req);
-                    res.body(*p->render());
-                    p->post(req, res);
+                    try{
+                        p->pre(req);
+                        res.body(*p->render());
+                        p->post(req, res);
+                    }catch(httplus::XXXError& e){
+                        e.recover(*p.get());
+                    }catch(const kul::Exception& e){
+                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                            << e.stack() << std::flush;
+                    }catch(const std::exception& e){
+                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                            << e.what() << std::flush;
+                    }catch(...){
+                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                            << "Unknown exception in httplus Reponder" << std::flush;
+                    }
                 } else e = 1;
                 //if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
             }else KEXCEPT(kul::http::Exception, "HTTP RESPONSE DENIED");

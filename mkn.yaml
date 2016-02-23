@@ -17,3 +17,4 @@ profile:
     parent: c
     src: ./usr
     main: test.cpp
+    mode: none
