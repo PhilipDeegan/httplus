@@ -72,7 +72,7 @@ class App{
                         ser = http[port].get();
                         ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
                     }else
-                        KOUT(NON) << "WARN: NO GENERATORS FOR HTTP ROOT: " << d;
+                        KERR << "WARN: NO GENERATORS FOR HTTP ROOT: " << d;
 
                 }
             for(const auto& p : http) p.second->def = defHttp;
