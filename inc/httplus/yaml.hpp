@@ -76,7 +76,6 @@ class Conf : public kul::yaml::File {
         static Conf CREATE(){
             return Conf::CREATE(kul::Dir(kul::env::CWD()));
         }
-        static void LOAD(Sites& sites);
         friend class kul::yaml::File;
 };
 

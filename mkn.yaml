@@ -15,6 +15,6 @@ profile:
 
   - name: test
     parent: c
-    src: ./usr
+    inc: ./usr
     main: test.cpp
     mode: none

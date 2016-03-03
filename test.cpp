@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kul/signal.hpp"
 
 #include "httplus.hpp"
+#include "html.hpp"
 
 std::vector<std::string> httplus::http::Reponder::TXT = {"xml", "txt", "html", "css"};
 
@@ -38,7 +39,12 @@ int main(int argc, char* argv[]) {
     kul::Signal sig;
     httplus::App a;
     httplus::Sites sites;
-    httplus::yaml::Conf::LOAD(sites);
+
+    httplus::Pages glbP;
+    glbP.insert("index", std::make_shared<Index>());
+    glbP.insert("res/css.css", std::make_shared<CSS>());
+    sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), glbP);
+
     kul::hash::map::S2T<std::shared_ptr<httplus::http::Server>> http;
     kul::hash::map::S2T<std::shared_ptr<httplus::https::Server>> https;
     a.load(http, https, sites);

@@ -126,11 +126,3 @@ mark.blue {
             res.header("Content-Type", "text/css; charset=utf-8");
         }
 };
-
-// This method is to setup generated pages
-void httplus::yaml::Conf::LOAD(Sites& sites){
-    Pages glbP;
-    glbP.insert("index", std::make_shared<Index>());
-    glbP.insert("res/css.css", std::make_shared<CSS>());
-    sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), glbP);
-}
