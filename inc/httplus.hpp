@@ -68,7 +68,7 @@ class App{
                         defHttp = std::make_shared<http::Conf>(c["root"].Scalar(), home);
                     }else if(sites.count(std::to_string(std::hash<std::string>()(d.real())))){
                         const Pages& pages((*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second);
-                        http.insert(port, std::make_shared<http::Server>(kul::Type::GET_UINT(port), pages));
+                        http.insert(port, std::make_shared<http::Server>(kul::String::UINT16(port), pages));
                         ser = http[port].get();
                         ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
                     }else
@@ -94,7 +94,7 @@ class App{
                         continue; 
                     }
                     const Pages& pages((*sites.find(hsh)).second);
-                    https.insert(port, std::make_shared<https::Server>(kul::Type::GET_UINT(port), pages, crt, key));
+                    https.insert(port, std::make_shared<https::Server>(kul::String::UINT16(port), pages, crt, key));
                     ser = https[port].get();
                     std::string home(c["home"] ? c["home"].Scalar() : "");
                     ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));

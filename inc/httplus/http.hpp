@@ -78,7 +78,7 @@ class Reponder{
             if(req.headers().count("Host")){
                 std::vector<std::string> bits;
                 std::string host((*req.headers().find("Host")).second);
-                kul::String::split(host, ':', bits);
+                kul::String::SPLIT(host, ':', bits);
                 if(bits.size() > 1) host = bits[0];
                 if(confs.count(host)) conf = (*confs.find(host)).second.get();
             }
@@ -126,7 +126,7 @@ class Reponder{
                     }
                 } else e = 1;
                 //if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
-            }else KEXCEPT(kul::http::Exception, "HTTP RESPONSE DENIED");
+            }else KEXCEPT(kul::http::Exception, "DENIED");
             if(e) res.body("ERROR");
             if(!res.header("Content-Type"))res.header("Content-Type", ct);
             return res;
@@ -154,7 +154,7 @@ class Server : public kul::http::Server{
         void stop(){
             kul::http::Server::stop();
         }
-        friend class kul::ThreadRef<Server>;
+        friend class kul::Thread;
         friend class httplus::App;
 };
 }
@@ -178,7 +178,7 @@ class Server : public kul::https::Server{
         void stop(){
             kul::https::Server::stop();
         }
-        friend class kul::ThreadRef<Server>;
+        friend class kul::Thread;
         friend class httplus::App;
 };
 

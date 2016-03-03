@@ -42,19 +42,19 @@ int main(int argc, char* argv[]) {
     kul::hash::map::S2T<std::shared_ptr<httplus::http::Server>> http;
     kul::hash::map::S2T<std::shared_ptr<httplus::https::Server>> https;
     a.load(http, https, sites);
-    std::vector<std::pair<std::shared_ptr<kul::Ref<httplus::http::Server>>, std::shared_ptr<kul::Thread>>> thr;
+    std::vector<std::pair<std::shared_ptr<std::reference_wrapper<httplus::http::Server>>, std::shared_ptr<kul::Thread>>> thr;
     for(const auto& site : http){
         httplus::http::Server& s(*site.second.get());
-        std::shared_ptr<kul::Ref<httplus::http::Server>> ref = std::make_shared<kul::Ref<httplus::http::Server>>(s);
+        std::shared_ptr<std::reference_wrapper<httplus::http::Server>> ref = std::make_shared<std::reference_wrapper<httplus::http::Server>>(std::ref(s));
         std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(*ref.get());
         thr.push_back(std::make_pair(ref, th));
         auto st = [&s](int16_t){ s.stop(); };
         sig.intr(st).segv(st);
     }
-    std::vector<std::pair<std::shared_ptr<kul::Ref<httplus::https::Server>>, std::shared_ptr<kul::Thread>>> thrS;
+    std::vector<std::pair<std::shared_ptr<std::reference_wrapper<httplus::https::Server>>, std::shared_ptr<kul::Thread>>> thrS;
     for(const auto& site : https){
         httplus::https::Server& s(*site.second.get());
-        std::shared_ptr<kul::Ref<httplus::https::Server>> ref = std::make_shared<kul::Ref<httplus::https::Server>>(*site.second.get());
+        std::shared_ptr<std::reference_wrapper<httplus::https::Server>> ref = std::make_shared<std::reference_wrapper<httplus::https::Server>>(std::ref(s));
         std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(*ref.get());
         thrS.push_back(std::make_pair(ref, th));
         auto st = [&s](int16_t){ s.stop(); };
