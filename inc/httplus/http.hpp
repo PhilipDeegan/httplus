@@ -48,26 +48,44 @@ class Exception : public kul::Exception{
         Exception(const char*f, const uint16_t& l, const std::string& s) : kul::Exception(f, l, s){}
 };
 
-class Reponder;
+class Responder;
 class Conf{
     protected:
         const std::string home, root;
         kul::File a ,e;
         kul::io::Writer acc ,err;
+        std::vector<std::string> txt;
     public:
-        Conf(const std::string& r, const std::string& h = "") : 
+        Conf(const std::string& r, const std::string& h = "", const std::string& t = "") : 
             home(h), root(r),
             a(kul::File("access.log", kul::Dir(r).join("log"))),
             e(kul::File("error.log", kul::Dir(r).join("log"))),
-            acc(a, 1), err(e, 1){}
-		friend class Reponder;
+            acc(a, 1), err(e, 1){
+                kul::String::SPLIT(t, ' ', txt);
+            }
+		friend class Responder;
 };
 typedef kul::hash::map::S2T<std::shared_ptr<Conf>> Confs;
 
-class Reponder{
+class Responder{
     private:
-        static std::vector<std::string> TXT;
-        static const kul::http::AResponse& response(
+        kul::hash::map::S2S dlts;
+        Responder(){
+            dlts.insert("pdf", "application/pdf");
+            dlts.insert("exe", "application/octet-stream");
+            dlts.insert("zip", "application/zip");
+            dlts.insert("doc", "application/msword");
+            dlts.insert("xls", "application/vnd.ms-excel");
+            dlts.insert("ppt", "application/vnd.ms-powerpoint");
+            dlts.insert("gif", "image/gif");
+            dlts.insert("png", "image/png");
+            dlts.insert("jpeg", "image/jpg");
+            dlts.insert("jpg", "image/jpg");
+        }
+        static Responder& INSTANCE(){
+            static Responder i; return i;
+        }
+        const kul::http::AResponse& response(
                 kul::http::AResponse& res, 
                 const std::string& resource, 
                 const kul::http::ARequest& req,
@@ -96,35 +114,46 @@ class Reponder{
                     bool bin = 0;
                     if(f.name().find('.') != std::string::npos && f.name().rfind('.') + 1 < f.name().size()){
                         const std::string& ft(f.name().substr(f.name().rfind('.') + 1));
-                        if(std::find(TXT.begin(), TXT.end(), ft) == TXT.end()) bin = 1;
                         if(ft == "css") ct = "text/css; charset=utf-8";
+                        else if(std::find(conf->txt.begin(), conf->txt.end(), ft) == conf->txt.end()){
+                            bin = 1;
+                            res.header("Content-Disposition", "attachment; filename\""+f.name()+"\"");
+                            if(dlts.count(ft))
+                                res.header("Content-Type", (*dlts.find(ft)).second);
+                            else
+                                res.header("Content-Type", "application/force-download");
+                        } 
                     }
+                        
                     std::shared_ptr<kul::io::AReader> rr;
                     if(bin) rr = std::make_shared<kul::io::BinaryReader>(f);
                     else    rr = std::make_shared<kul::io::Reader>(f);
                     const std::string*s = 0;
                     while((s = rr->read(1024))) ss << *s;
                     res.body(ss.str());
-                }else
-                if(ps.count(r)) {
-                    auto p((*ps.find(r)).second->clone());
-                    try{
-                        p->pre(req);
-                        res.body(*p->render());
-                        p->post(req, res);
-                    }catch(httplus::XXXError& e){
-                        e.recover(*p.get());
-                    }catch(const kul::Exception& e){
-                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
-                            << e.stack() << std::flush;
-                    }catch(const std::exception& e){
-                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
-                            << e.what() << std::flush;
-                    }catch(...){
-                        conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
-                            << "Unknown exception in httplus Reponder" << std::flush;
-                    }
-                } else e = 1;
+                }else{
+                    if(!ps.count(r) && ps.count("404")) r = "404";
+                    if(ps.count(r)) {
+                        auto p((*ps.find(r)).second->clone());
+                        try{
+                            p->pre(req);
+                            res.body(*p->render());
+                            p->post(req, res);
+                        }catch(httplus::XXXError& e){
+                            e.recover(*p.get());
+                        }catch(const kul::Exception& e){
+                            conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                                << e.stack() << std::flush;
+                        }catch(const std::exception& e){
+                            conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                                << e.what() << std::flush;
+                        }catch(...){
+                            conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                                << "Unknown exception in httplus Reponder" << std::flush;
+                        }
+                    } else e = 1;
+                }
+
                 //if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
             }else KEXCEPT(kul::http::Exception, "DENIED");
             if(e) res.body("ERROR");
@@ -145,7 +174,7 @@ class Server : public kul::http::Server{
         }
         const kul::http::AResponse response(const std::string& res, const kul::http::ARequest& req){
             kul::http::_1_1Response r;
-            Reponder::response(r, res, req, ps, confs, def.get());
+            Responder::INSTANCE().response(r, res, req, ps, confs, def.get());
             return kul::http::Server::response(r);
         }
     public:
@@ -169,7 +198,7 @@ class Server : public kul::https::Server{
         }
         const kul::http::AResponse response(const std::string& res, const kul::http::ARequest& req){
             kul::http::_1_1Response r;
-            http::Reponder::response(r, res, req, ps, confs, 0);
+            http::Responder::INSTANCE().response(r, res, req, ps, confs, 0);
             return kul::http::Server::response(r);
         }
    public:

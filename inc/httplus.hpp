@@ -64,13 +64,14 @@ class App{
                     if(!p && !p.mk()) KEXCEPTION("Invalid access on directory: " + d.real());
                     http::Server* ser = {0};
                     std::string home(c["home"] ? c["home"].Scalar() : "");
+                    const std::string txt(c["text"] ? c["text"].Scalar() : "");
                     if(!c["host"]){
-                        defHttp = std::make_shared<http::Conf>(c["root"].Scalar(), home);
+                        defHttp = std::make_shared<http::Conf>(c["root"].Scalar(), home, txt);
                     }else if(sites.count(std::to_string(std::hash<std::string>()(d.real())))){
                         const Pages& pages((*sites.find(std::to_string(std::hash<std::string>()(d.real())))).second);
                         http.insert(port, std::make_shared<http::Server>(kul::String::UINT16(port), pages));
                         ser = http[port].get();
-                        ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
+                        ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
                     }else
                         KERR << "WARN: NO GENERATORS FOR HTTP ROOT: " << d;
 
@@ -97,7 +98,8 @@ class App{
                     https.insert(port, std::make_shared<https::Server>(kul::String::UINT16(port), pages, crt, key));
                     ser = https[port].get();
                     std::string home(c["home"] ? c["home"].Scalar() : "");
-                    ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home));
+                    const std::string txt(c["text"] ? c["text"].Scalar() : "");
+                    ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
                 }
         }
 };

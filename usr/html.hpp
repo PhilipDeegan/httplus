@@ -80,6 +80,17 @@ class Index : public Head{
         }
 };
 
+class _404 : public Head{
+    public:
+        _404(){
+            std::shared_ptr<kul::html4::Tag> div(std::make_shared<kul::html4::tag::Named>("div"));
+            div->attribute("class", "body");
+            div->text("NOT FOUND - 404");
+            body(div);
+        }
+        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
+};
+
 class CSS : public httplus::Page{
     private:
         std::string s;

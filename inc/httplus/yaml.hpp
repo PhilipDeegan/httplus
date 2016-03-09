@@ -59,12 +59,14 @@ class Conf : public kul::yaml::File {
             using namespace kul::yaml;
             NodeValidator http("http", {
                 NodeValidator("root", 1),
+                NodeValidator("text"),
                 NodeValidator("host"),
                 NodeValidator("port"),
                 NodeValidator("home")
             }, 0, NodeType::LIST);
             NodeValidator https("https", {
                 NodeValidator("root", 1),
+                NodeValidator("text"),
                 NodeValidator("host", 1),
                 NodeValidator("port"),
                 NodeValidator("crt", 1),

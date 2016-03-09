@@ -12,9 +12,12 @@ Otherwise it is used as a key to check for generators.
 
 Generator objects are stored and retrieved using a hash of the root directory path as the key.
 
-Files are served in binary mode, unless the filetype is contained within:
-std::vector<std::string> httplus::http::Reponder::TXT
-Found at the top of ./test.cpp
+File serving rules:
+    No file type = Text mode
+    File type is in config text field = text mode
+    else = binary mode 
+
+404 errors are currently handled by a generator with the key "404".
 
 ## Configure
 
