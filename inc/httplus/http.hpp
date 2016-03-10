@@ -109,7 +109,7 @@ class Responder{
                 const kul::Dir log(root.join("log"), 1);
                 const kul::Dir pub(root.join("pub"), 1);
                 std::stringstream ss;
-                kul::File f(r, pub);
+                kul::File f(pub.join(r));
                 if(f && f.dir().real().find(pub.real()) != std::string::npos){
                     bool bin = 0;
                     if(f.name().find('.') != std::string::npos && f.name().rfind('.') + 1 < f.name().size()){
