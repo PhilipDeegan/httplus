@@ -95,8 +95,11 @@ class App{
                         continue; 
                     }
                     const Pages& pages((*sites.find(hsh)).second);
-                    https.insert(port, std::make_shared<https::Server>(kul::String::UINT16(port), pages, crt, key));
+                    std::string ssls(config.root()["ssls"] ? config.root()["ssls"].Scalar() : "");
+                    https.insert(port, std::make_shared<https::Server>(kul::String::UINT16(port), pages, crt, key, ssls));
                     ser = https[port].get();
+                    ser->init();
+                    if(c["chain"]) ser->setChain(c["chain"].Scalar());
                     std::string home(c["home"] ? c["home"].Scalar() : "");
                     const std::string txt(c["text"] ? c["text"].Scalar() : "");
                     ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));

@@ -34,9 +34,47 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kul/io.hpp"
 #include "kul/https.hpp"
 
+#include "httplus/def.hpp"
 #include "httplus/html.hpp"
 
+#ifdef _HTTPLUS_ACCEPT_GZIP_
+#include <zlib.h>
+#endif /* _HTTPLUS_ACCEPT_GZIP_ */
+
 namespace httplus{ 
+
+#ifdef _HTTPLUS_ACCEPT_GZIP_
+class GzException : public kul::Exception{
+    public:
+        GzException(const char*f, const uint16_t& l, const std::string& s) : kul::Exception(f, l, s){}
+};
+
+class Gzipper{
+    public:
+        static void COMPRESS(const std::string& in, std::string& out, int16_t compression = Z_BEST_COMPRESSION) throw(GzException){
+            z_stream zstr;
+            memset(&zstr, 0, sizeof(zstr));
+            if (deflateInit(&zstr, compression) != Z_OK) KEXCEPT(GzException, "zlib deflateInit failed");
+            zstr.avail_in = in.size();
+            zstr.next_in = (Bytef*)in.data();
+            char buff[23456];
+            int16_t e = 0;
+            do {
+                zstr.next_out = reinterpret_cast<Bytef*>(buff);
+                zstr.avail_out = sizeof(buff);
+                e = deflate(&zstr, Z_FINISH);
+                if (out.size() < zstr.total_out) out.append(std::string(buff, zstr.total_out - out.size()));
+            } while (e == Z_OK);
+            deflateEnd(&zstr);
+            if (e != Z_STREAM_END) { 
+                std::stringstream ss;
+                ss << "zlib compression issue: (" << e << ") " << zstr.msg;
+                KEXCEPT(GzException, ss.str());
+            }
+        }
+};
+#endif /* _HTTPLUS_ACCEPT_GZIP_ */
+
 class App;
 namespace https{
 class Server;
@@ -117,7 +155,7 @@ class Responder{
                         if(ft == "css") ct = "text/css; charset=utf-8";
                         else if(std::find(conf->txt.begin(), conf->txt.end(), ft) == conf->txt.end()){
                             bin = 1;
-                            res.header("Content-Disposition", "attachment; filename\""+f.name()+"\"");
+                            res.header("Content-Disposition", "attachment; filename=\""+f.name()+"\"");
                             if(dlts.count(ft))
                                 res.header("Content-Type", (*dlts.find(ft)).second);
                             else
@@ -153,11 +191,21 @@ class Responder{
                         }
                     } else e = 1;
                 }
-
                 //if(!e) conf->acc << "REALLY BIG SHOE!" << kul::os::EOL() << std::flush;
             }else KEXCEPT(kul::http::Exception, "DENIED");
             if(e) res.body("ERROR");
-            if(!res.header("Content-Type"))res.header("Content-Type", ct);
+
+#ifdef _HTTPLUS_ACCEPT_GZIP_
+            else{
+                if(req.headers().count("Accept-Encoding") && (*req.headers().find("Accept-Encoding")).second.find("gzip") != std::string::npos){
+                    std::string gz;
+                    Gzipper::COMPRESS(res.body(), gz);
+                    res.body(gz);
+                    res.header("Content-Encoding", "gzip");
+                }
+            }
+#endif /* _HTTPLUS_ACCEPT_GZIP_ */
+            if(!res.header("Content-Type")) res.header("Content-Type", ct);
             return res;
         }
     friend class Server;
@@ -202,8 +250,8 @@ class Server : public kul::https::Server{
             return kul::http::Server::response(r);
         }
    public:
-        Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key) 
-        	: kul::https::Server(p, crt, key), ps(ps){}
+        Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key, const std::string& cs = "") 
+        	: kul::https::Server(p, crt, key, cs), ps(ps){}
         void stop(){
             kul::https::Server::stop();
         }

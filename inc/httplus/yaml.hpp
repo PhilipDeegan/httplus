@@ -57,6 +57,7 @@ class Conf : public kul::yaml::File {
         const kul::Dir&   dir() const { return d; }
         const kul::yaml::Validator validator() const{
             using namespace kul::yaml;
+
             NodeValidator http("http", {
                 NodeValidator("root", 1),
                 NodeValidator("text"),
@@ -66,14 +67,19 @@ class Conf : public kul::yaml::File {
             }, 0, NodeType::LIST);
             NodeValidator https("https", {
                 NodeValidator("root", 1),
-                NodeValidator("text"),
+                NodeValidator("text"),                
                 NodeValidator("host", 1),
                 NodeValidator("port"),
                 NodeValidator("crt", 1),
                 NodeValidator("key", 1),
+                NodeValidator("chain"),
                 NodeValidator("home")
             }, 0, NodeType::LIST);
-            return Validator({http, https});
+            return Validator({
+                NodeValidator("ssls"),
+                http, 
+                https
+            });
         }
         static Conf CREATE(){
             return Conf::CREATE(kul::Dir(kul::env::CWD()));

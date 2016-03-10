@@ -43,3 +43,11 @@ https:
 ## Generation
 
 See ./usr/html.hpp
+
+
+Switches
+ 
+Key             _HTTPLUS_ACCEPT_GZIP_ 
+Type            bool
+Default         0
+Description     Enables compression of response body when request header contains "Accept-Encoding" contains "gzip", requires zlib
