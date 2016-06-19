@@ -166,8 +166,8 @@ class Responder{
                     std::shared_ptr<kul::io::AReader> rr;
                     if(bin) rr = std::make_shared<kul::io::BinaryReader>(f);
                     else    rr = std::make_shared<kul::io::Reader>(f);
-                    const std::string*s = 0;
-                    while((s = rr->read(1024))) ss << *s;
+                    const char* s = 0;
+                    while((s = rr->read(1024))) ss << s;
                     res.body(ss.str());
                 }else{
                     if(!ps.count(r) && ps.count("404")) r = "404";
