@@ -11,7 +11,7 @@ profile:
       - name: mkn.ram
         version: master
       - name: parse.yaml
-        version: stable
+        version: 21062016
 
   - name: test
     parent: c
