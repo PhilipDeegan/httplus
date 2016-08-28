@@ -23,6 +23,8 @@ File serving rules:
 
 httplus.yaml:
 
+ssls: <DEFAULT HTTPS CYPHER LIST>
+
 http:
   - root: /var/www/global       # no default, mandatory
     host: localhost             # missing assumed default configuration
@@ -39,6 +41,8 @@ https:
     home: index                 # optional default page
     crt:  /path/to/site.crt     # no default, mandatory
     key:  /path/to/site.key     # no default, mandatory
+    chain: /path/to/chain.pem   # no default, optional
+    ssls: <CYPHER LIST>         # no default, optional 
 
 ## Generation
 

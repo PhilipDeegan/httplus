@@ -95,7 +95,8 @@ class App{
                         continue; 
                     }
                     const Pages& pages((*sites.find(hsh)).second);
-                    std::string ssls(config.root()["ssls"] ? config.root()["ssls"].Scalar() : "");
+                    std::string ssls(c["ssls"] ? c["ssls"].Scalar() 
+                        : config.root()["ssls"] ? config.root()["ssls"].Scalar() : "");
                     https.insert(port, std::make_shared<https::Server>(kul::String::UINT16(port), pages, crt, key, ssls));
                     ser = https[port].get();
                     ser->init();

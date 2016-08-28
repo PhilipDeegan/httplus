@@ -73,6 +73,7 @@ class Conf : public kul::yaml::File {
                 NodeValidator("crt", 1),
                 NodeValidator("key", 1),
                 NodeValidator("chain"),
+                NodeValidator("ssls"),
                 NodeValidator("home")
             }, 0, NodeType::LIST);
             return Validator({
