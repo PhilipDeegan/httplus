@@ -1,4 +1,4 @@
-
+#! clean build -tSa "-O2 -fPIC" -p test -l "-lssl -lcrypto -pthread"
 
 name: httplus
 
@@ -7,6 +7,7 @@ parent: c
 profile:
   - name: c
     inc: ./inc
+    src: ./src
     dep: 
       - name: mkn.ram
         version: master
