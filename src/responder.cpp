@@ -32,12 +32,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const kul::http::AResponse& httplus::http::Responder::response(
                 kul::http::AResponse& res, 
-                const std::string& resource, 
                 const kul::http::ARequest& req,
                 const Pages& ps,
                 const Confs& confs, 
                 Conf* def) throw(httplus::http::Exception){
-	KLOG(DBG) << __func__;
+	KLOG(DBG);
+    const std::string& resource(req.path());
+
     http::Conf* conf = def;
     if(req.headers().count("Host")){
         std::vector<std::string> bits;
@@ -88,13 +89,13 @@ const kul::http::AResponse& httplus::http::Responder::response(
                 }catch(httplus::XXXError& e){
                     e.recover(*p.get());
                 }catch(const kul::Exception& e){
-                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__, kul::log::mode::ERR) 
                         << e.stack() << std::flush;
                 }catch(const std::exception& e){
-                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__, kul::log::mode::ERR) 
                         << e.what() << std::flush;
                 }catch(...){
-                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __LINE__, kul::log::mode::ERR) 
+                    conf->err << kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__, kul::log::mode::ERR) 
                         << "Unknown exception in httplus Reponder" << std::flush;
                 }
             } else e = 1;
@@ -113,6 +114,6 @@ const kul::http::AResponse& httplus::http::Responder::response(
     }
 #endif /* _HTTPLUS_ACCEPT_GZIP_ */
     if(!res.header("Content-Type")) res.header("Content-Type", ct);
-	KLOG(DBG) << __func__;
+	KLOG(DBG);
     return res;
 }

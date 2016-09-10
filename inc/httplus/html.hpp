@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _HTTPLUS_PAGE_HPP_
 #define _HTTPLUS_PAGE_HPP_
 
+#include "kul/log.hpp"
 #include "kul/http.hpp"
 #include "kul/html4.hpp"
 #include "kul/threads.hpp"

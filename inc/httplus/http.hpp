@@ -125,7 +125,6 @@ class Responder{
         }
         const kul::http::AResponse& response(
                 kul::http::AResponse& res, 
-                const std::string& resource, 
                 const kul::http::ARequest& req,
                 const Pages& ps,
                 const Confs& confs, 
@@ -136,6 +135,7 @@ class Responder{
 };
 
 class Server : public kul::http::Server{
+    friend class https::Server;
     private:
         const Pages& ps;
         Confs confs;
@@ -143,11 +143,20 @@ class Server : public kul::http::Server{
         void operator()(){
             kul::http::Server::start();
         }
-        const kul::http::AResponse response(const std::string& res, const kul::http::ARequest& req){
+        kul::http::AResponse respond(const kul::http::ARequest& req) override {
             kul::http::_1_1Response r;
-            Responder::INSTANCE().response(r, res, req, ps, confs, def.get());
-            return kul::http::Server::response(r);
+            Responder::INSTANCE().response(r, req, ps, confs, def.get());
+            return RESPONSE_HEADERS(r);
         }
+    protected:
+        static const kul::http::_1_1Response& RESPONSE_HEADERS(kul::http::_1_1Response& r){
+            if(!r.header("Date"))           r.header("Date", kul::DateTime::NOW());
+            if(!r.header("Connection"))     r.header("Connection", "close");
+            if(!r.header("Content-Type"))   r.header("Content-Type", "text/html");
+            if(!r.header("Content-Length")) r.header("Content-Length", std::to_string(r.body().size()));
+            return r;
+        }
+
     public:
         Server(const uint16_t& p, const Pages& ps) 
         	: kul::http::Server(p), ps(ps){}
@@ -167,10 +176,10 @@ class Server : public kul::https::Server{
         void operator()(){
             kul::https::Server::start();
         }
-        const kul::http::AResponse response(const std::string& res, const kul::http::ARequest& req){
+        kul::http::AResponse respond(const kul::http::ARequest& req) override {
             kul::http::_1_1Response r;
-            http::Responder::INSTANCE().response(r, res, req, ps, confs, 0);
-            return kul::http::Server::response(r);
+            http::Responder::INSTANCE().response(r, req, ps, confs, 0);
+            return http::Server::RESPONSE_HEADERS(r);
         }
    public:
         Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key, const std::string& cs = "") 
