@@ -160,7 +160,7 @@ class Server : public kul::http::Server{
     public:
         Server(const uint16_t& p, const Pages& ps) 
         	: kul::http::Server(p), ps(ps){}
-        void stop(){
+        void stop() override {
             kul::http::Server::stop();
         }
         friend class kul::Thread;
@@ -184,7 +184,7 @@ class Server : public kul::https::Server{
    public:
         Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key, const std::string& cs = "") 
         	: kul::https::Server(p, crt, key, cs), ps(ps){}
-        void stop(){
+        void stop() override {
             kul::https::Server::stop();
         }
         friend class kul::Thread;
