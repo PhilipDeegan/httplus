@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _HTTPLUS_HTTP_HPP_
 
 #include "kul/io.hpp"
+#include "kul/dbg.hpp"
 #include "kul/https.hpp"
 
 #include "httplus/def.hpp"
@@ -109,16 +110,16 @@ class Responder{
     private:
         kul::hash::map::S2S dlts;
         Responder(){
-            dlts.insert("pdf", "application/pdf");
-            dlts.insert("exe", "application/octet-stream");
-            dlts.insert("zip", "application/zip");
-            dlts.insert("doc", "application/msword");
-            dlts.insert("xls", "application/vnd.ms-excel");
-            dlts.insert("ppt", "application/vnd.ms-powerpoint");
-            dlts.insert("gif", "image/gif");
-            dlts.insert("png", "image/png");
+            dlts.insert("pdf",  "application/pdf");
+            dlts.insert("exe",  "application/octet-stream");
+            dlts.insert("zip",  "application/zip");
+            dlts.insert("doc",  "application/msword");
+            dlts.insert("xls",  "application/vnd.ms-excel");
+            dlts.insert("ppt",  "application/vnd.ms-powerpoint");
+            dlts.insert("gif",  "image/gif");
+            dlts.insert("png",  "image/png");
             dlts.insert("jpeg", "image/jpg");
-            dlts.insert("jpg", "image/jpg");
+            dlts.insert("jpg",  "image/jpg");
         }
         static Responder& INSTANCE(){
             static Responder i; return i;
@@ -127,25 +128,35 @@ class Responder{
                 kul::http::AResponse& res, 
                 const kul::http::ARequest& req,
                 const Pages& ps,
-                const Confs& confs, 
-                Conf* def) throw(httplus::http::Exception);
+                const Confs& confs) throw(httplus::http::Exception);
 
     friend class Server;
     friend class https::Server;
 };
 
-class Server : public kul::http::Server{
+class AServer{
+    protected:
+        kul::hash::map::S2S _headers;
+    public:
+        virtual kul::http::AResponse respond(const kul::http::ARequest& req) = 0;
+        virtual void stop() = 0;
+        virtual void operator()() = 0;
+};
+
+class Server : public httplus::http::AServer, public kul::http::MultiServer{
+    friend class kul::Thread;
+    friend class httplus::App;
     friend class https::Server;
     private:
         const Pages& ps;
         Confs confs;
-        std::shared_ptr<Conf> def;
         void operator()(){
-            kul::http::Server::start();
+            kul::http::MultiServer::start();
         }
         kul::http::AResponse respond(const kul::http::ARequest& req) override {
+            KUL_DBG_FUNC_ENTER
             kul::http::_1_1Response r;
-            Responder::INSTANCE().response(r, req, ps, confs, def.get());
+            Responder::INSTANCE().response(r, req, ps, confs);
             return RESPONSE_HEADERS(r);
         }
     protected:
@@ -158,38 +169,38 @@ class Server : public kul::http::Server{
         }
 
     public:
-        Server(const uint16_t& p, const Pages& ps) 
-        	: kul::http::Server(p), ps(ps){}
+        Server(const uint16_t& p, const uint16_t& threads, const Pages& ps) 
+                : kul::http::MultiServer(p, threads), ps(ps){}
         void stop() override {
-            kul::http::Server::stop();
+            kul::http::MultiServer::stop();
         }
-        friend class kul::Thread;
-        friend class httplus::App;
 };
-}
+} // end namespace http
 
 namespace https{
-class Server : public kul::https::Server{
+class Server : public httplus::http::AServer, public kul::https::MultiServer{
+    friend class kul::Thread;
+    friend class httplus::App;
     private:
         const Pages& ps;
         http::Confs confs; 
         void operator()(){
-            kul::https::Server::start();
+            kul::https::MultiServer::start();
         }
         kul::http::AResponse respond(const kul::http::ARequest& req) override {
+            KUL_DBG_FUNC_ENTER
             kul::http::_1_1Response r;
-            http::Responder::INSTANCE().response(r, req, ps, confs, 0);
+            http::Responder::INSTANCE().response(r, req, ps, confs);
             return http::Server::RESPONSE_HEADERS(r);
         }
    public:
-        Server(const uint16_t& p, const Pages& ps, const kul::File& crt, const kul::File& key, const std::string& cs = "") 
-        	: kul::https::Server(p, crt, key, cs), ps(ps){}
+        Server(const uint16_t& p, const uint16_t& threads, const Pages& ps, const kul::File& crt, const kul::File& key, const std::string& cs = "") 
+        	: kul::https::MultiServer(p, threads, crt, key, cs), ps(ps){}
         void stop() override {
-            kul::https::Server::stop();
+            kul::https::MultiServer::stop();
         }
-        friend class kul::Thread;
-        friend class httplus::App;
 };
 
-}}
+} // end namespace https
+} // end namespace httplus
 #endif /* _HTTPLUS_HTTP_HPP_ */

@@ -1,4 +1,4 @@
-#! clean build -tSa "-O2 -fPIC" -p test -l "-lssl -lcrypto -pthread"
+#! clean build -tSa "-O2 -fPIC -D_KUL_HTTPS_" -p test -l "-lssl -lcrypto -pthread" -d
 
 name: httplus
 
@@ -13,6 +13,7 @@ profile:
         version: master
       - name: parse.yaml
         version: master
+
 
   - name: test
     parent: c

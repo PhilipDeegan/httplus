@@ -58,12 +58,21 @@ class Conf : public kul::yaml::File {
         const kul::yaml::Validator validator() const{
             using namespace kul::yaml;
 
+            NodeValidator sys("system", {
+                NodeValidator("threads"),
+                NodeValidator("max_request_bytes"),
+                NodeValidator("ssl_cyphers"),
+            }, 0, NodeType::MAP);
+
+            NodeValidator http_headers("header", { NodeValidator("*") }, 0, NodeType::MAP);
             NodeValidator http("http", {
                 NodeValidator("root", 1),
                 NodeValidator("text"),
                 NodeValidator("host"),
                 NodeValidator("port"),
-                NodeValidator("home")
+                NodeValidator("home"),
+                NodeValidator("threads"),
+                http_headers
             }, 0, NodeType::LIST);
             NodeValidator https("https", {
                 NodeValidator("root", 1),
@@ -73,11 +82,13 @@ class Conf : public kul::yaml::File {
                 NodeValidator("crt", 1),
                 NodeValidator("key", 1),
                 NodeValidator("chain"),
-                NodeValidator("ssls"),
-                NodeValidator("home")
+                NodeValidator("home"),
+                NodeValidator("threads"),
+                NodeValidator("ssl_cyphers"),
+                http_headers
             }, 0, NodeType::LIST);
             return Validator({
-                NodeValidator("ssls"),
+                sys,
                 http, 
                 https
             });

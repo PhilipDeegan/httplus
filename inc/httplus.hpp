@@ -50,8 +50,7 @@ class App{
         httplus::yaml::Conf config;
     public:
         App() : config(httplus::yaml::Conf::CREATE()){}
-        void load(kul::hash::map::S2T<std::shared_ptr<http::Server>>& http,
-            kul::hash::map::S2T<std::shared_ptr<https::Server>>& https, Sites& sites) throw(httplus::Exception);
+        void load(kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http, Sites& sites) throw(httplus::Exception);
 };
 
 }

@@ -27,7 +27,7 @@ ssls: <DEFAULT HTTPS CYPHER LIST>
 
 http:
   - root: /var/www/global       # no default, mandatory
-    host: localhost             # missing assumed default configuration
+    host: localhost             # no default, "_" considered global
     port: 8888                  # default 80
     home: index                 # optional default page
   - root: /var/www/global       # no default, mandatory

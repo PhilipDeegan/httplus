@@ -34,12 +34,11 @@ const kul::http::AResponse& httplus::http::Responder::response(
                 kul::http::AResponse& res, 
                 const kul::http::ARequest& req,
                 const Pages& ps,
-                const Confs& confs, 
-                Conf* def) throw(httplus::http::Exception){
-	KLOG(DBG);
+                const Confs& confs) throw(httplus::http::Exception){
+    KUL_DBG_FUNC_ENTER
     const std::string& resource(req.path());
 
-    http::Conf* conf = def;
+    http::Conf* conf = 0;
     if(req.headers().count("Host")){
         std::vector<std::string> bits;
         std::string host((*req.headers().find("Host")).second);
@@ -114,6 +113,5 @@ const kul::http::AResponse& httplus::http::Responder::response(
     }
 #endif /* _HTTPLUS_ACCEPT_GZIP_ */
     if(!res.header("Content-Type")) res.header("Content-Type", ct);
-	KLOG(DBG);
     return res;
 }

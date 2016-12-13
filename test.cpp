@@ -44,47 +44,36 @@ int main(int argc, char* argv[]) {
     glbP.insert("res/css.css", std::make_shared<CSS>());
     sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), glbP);
 
-    kul::hash::map::S2T<std::shared_ptr<httplus::http::Server>> http;
-    kul::hash::map::S2T<std::shared_ptr<httplus::https::Server>> https;
-    a.load(http, https, sites);
-    std::vector<std::pair<std::shared_ptr<std::reference_wrapper<httplus::http::Server>>, std::shared_ptr<kul::Thread>>> thr;
-    for(const auto& site : http){
-        httplus::http::Server& s(*site.second.get());
-        std::shared_ptr<std::reference_wrapper<httplus::http::Server>> ref = std::make_shared<std::reference_wrapper<httplus::http::Server>>(std::ref(s));
-        std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(*ref.get());
-        thr.push_back(std::make_pair(ref, th));
-        auto st = [&s](int16_t){ s.stop(); };
-        sig.intr(st).segv(st);
-    }
-    std::vector<std::pair<std::shared_ptr<std::reference_wrapper<httplus::https::Server>>, std::shared_ptr<kul::Thread>>> thrS;
-    for(const auto& site : https){
-        httplus::https::Server& s(*site.second.get());
-        std::shared_ptr<std::reference_wrapper<httplus::https::Server>> ref = std::make_shared<std::reference_wrapper<httplus::https::Server>>(std::ref(s));
-        std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(*ref.get());
-        thrS.push_back(std::make_pair(ref, th));
-        auto st = [&s](int16_t){ s.stop(); };
+    kul::hash::map::S2T<std::shared_ptr<httplus::http::AServer>> servers;
+    a.load(servers, sites);
+    std::vector<std::pair<std::shared_ptr<httplus::http::AServer>, std::shared_ptr<kul::Thread>>> thr;
+    for(const auto& site : servers){
+        auto& s(site.second);
+        std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(std::ref(*s.get()));
+        thr.push_back(std::make_pair(s, th));
+        auto st = [&s](int16_t){ s->stop(); };
         sig.intr(st).segv(st);
     }
     try{
         for(auto& t : thr) t.second->run();
-        for(auto& t : thr) if(t.second->exception()) std::rethrow_exception(t.second->exception());
-        for(auto& t : thrS) t.second->run();
-        for(auto& t : thrS) if(t.second->exception()) std::rethrow_exception(t.second->exception());
         while(1){
-            kul::this_thread::sleep(1000);
+            kul::this_thread::sleep(100);            
             std::exception_ptr e;
             for(auto& t : thr)
-            if(t.second->exception()) e = t.second->exception();
+                if(t.second->exception()){
+                    e = t.second->exception();
+                    if(e) break;
+                }
             if(e){
-                for(const auto site : http)  site.second->stop();
-                for(const auto site : https) site.second->stop();
+                for(const auto site : servers) site.second->stop();
                 std::rethrow_exception(e);
             }
         }
     }
     catch(const kul::Exit& e){ if(e.code() != 0) KERR << e.stack(); return e.code(); }
-    catch(const kul::proc::ExitException& e){ KERR << e.stack(); return 1;}
+    catch(const kul::proc::ExitException& e){ KERR << e.stack(); return e.code();}
     catch(const kul::Exception& e){ KERR << e.stack(); return 2;}
     catch(const std::exception& e){ KERR << e.what(); return 3;}
+    catch(...)                    { KLOG(ERR) << "UNKNOWN EXCEPTION CAUGHT"; return 5;}
     return 0;
 }
