@@ -30,9 +30,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus/http.hpp"
 
-const kul::http::AResponse& httplus::http::Responder::response(
-                kul::http::AResponse& res, 
-                const kul::http::ARequest& req,
+const kul::http::Response& httplus::http::Responder::response(
+                kul::http::Response& res, 
+                const kul::http::A1_1Request& req,
                 const Pages& ps,
                 const Confs& confs) throw(httplus::http::Exception){
     KUL_DBG_FUNC_ENTER
@@ -74,8 +74,8 @@ const kul::http::AResponse& httplus::http::Responder::response(
             std::shared_ptr<kul::io::AReader> rr;
             if(bin) rr = std::make_shared<kul::io::BinaryReader>(f);
             else    rr = std::make_shared<kul::io::Reader>(f);
-            const char* s = 0;
-            while((s = rr->read(1024))) ss << s;
+            char* s = 0;
+            while((rr->read(s, 1024))) ss << s;
             res.body(ss.str());
         }else{
             if(!ps.count(r) && ps.count("404")) r = "404";

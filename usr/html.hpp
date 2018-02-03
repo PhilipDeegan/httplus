@@ -70,11 +70,11 @@ class Index : public Head{
             body(p).body(div);
         }
         std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
-        virtual void pre (const kul::http::ARequest& req){
+        virtual void pre (const kul::http::A1_1Request& req){
             // called before render
             // "this" is a now a copy of the original
         }
-        virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){
+        virtual void post(const kul::http::A1_1Request& req, kul::http::Response& res){
             // called after render
             // "this" is disposed of shortly after this method
         }
@@ -133,7 +133,7 @@ mark.blue {
         virtual const std::string* render(){
             return &s;
         }
-        virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){
+        virtual void post(const kul::http::A1_1Request& req, kul::http::Response& res){
             res.header("Content-Type", "text/css; charset=utf-8");
         }
 };

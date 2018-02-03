@@ -10,10 +10,8 @@ profile:
     src: ./src
     dep: 
       - name: mkn.ram
-        version: master
+        profile: https
       - name: parse.yaml
-        version: master
-
 
   - name: test
     parent: c

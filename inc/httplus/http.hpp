@@ -124,9 +124,9 @@ class Responder{
         static Responder& INSTANCE(){
             static Responder i; return i;
         }
-        const kul::http::AResponse& response(
-                kul::http::AResponse& res, 
-                const kul::http::ARequest& req,
+        const kul::http::Response& response(
+                kul::http::Response& res, 
+                const kul::http::A1_1Request& req,
                 const Pages& ps,
                 const Confs& confs) throw(httplus::http::Exception);
 
@@ -138,7 +138,7 @@ class AServer{
     protected:
         kul::hash::map::S2S _headers;
     public:
-        virtual kul::http::AResponse respond(const kul::http::ARequest& req) = 0;
+        virtual kul::http::Response respond(const kul::http::A1_1Request& req) = 0;
         virtual void stop() = 0;
         virtual void operator()() = 0;
 };
@@ -153,7 +153,7 @@ class Server : public httplus::http::AServer, public kul::http::MultiServer{
         void operator()(){
             kul::http::MultiServer::start();
         }
-        kul::http::AResponse respond(const kul::http::ARequest& req) override {
+        kul::http::Response respond(const kul::http::A1_1Request& req) override {
             KUL_DBG_FUNC_ENTER
             kul::http::_1_1Response r;
             Responder::INSTANCE().response(r, req, ps, confs);
@@ -187,7 +187,7 @@ class Server : public httplus::http::AServer, public kul::https::MultiServer{
         void operator()(){
             kul::https::MultiServer::start();
         }
-        kul::http::AResponse respond(const kul::http::ARequest& req) override {
+        kul::http::Response respond(const kul::http::A1_1Request& req) override {
             KUL_DBG_FUNC_ENTER
             kul::http::_1_1Response r;
             http::Responder::INSTANCE().response(r, req, ps, confs);

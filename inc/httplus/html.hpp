@@ -45,8 +45,8 @@ class Page : public kul::html4::Page{
 		}
     public:
     	virtual std::shared_ptr<Page> clone() = 0 ;//{ return clone(*this); }
-        virtual void pre (const kul::http::ARequest& req){}
-        virtual void post(const kul::http::ARequest& req, kul::http::AResponse& res){}
+        virtual void pre (const kul::http::A1_1Request& req){}
+        virtual void post(const kul::http::A1_1Request& req, kul::http::Response& res){}
 };
 typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
 
