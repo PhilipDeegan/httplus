@@ -1,0 +1,12 @@
+language: cpp
+
+os:
+  - osx
+compiler:
+  - clang
+
+script:
+  - git clone https://github.com/Dekken/maiken -b master --depth 1 maiken
+  - make bsd CXX=clang++ -C maiken
+  - mv maiken/mkn .
+  - ./mkn build -dtKa "-O2 -std=c++14" -l "-pthread -ldl" -p test run
