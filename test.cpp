@@ -30,49 +30,61 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "kul/signal.hpp"
 
-#include "httplus.hpp"
 #include "html.hpp"
+#include "httplus.hpp"
 
 int main(int argc, char* argv[]) {
-    kul::Signal sig;
-    httplus::App a;
-    httplus::Sites sites;
+  kul::Signal sig;
+  httplus::App a;
+  httplus::Sites sites;
 
-    httplus::Pages glbP;
-    glbP.insert("404",         std::make_shared<_404>());
-    glbP.insert("index",       std::make_shared<Index>());
-    glbP.insert("res/css.css", std::make_shared<CSS>());
-    sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")), glbP);
+  httplus::Pages glbP;
+  glbP.insert("404", std::make_shared<_404>());
+  glbP.insert("index", std::make_shared<Index>());
+  glbP.insert("res/css.css", std::make_shared<CSS>());
+  sites.insert(std::to_string(std::hash<std::string>()("/var/www/global")),
+               glbP);
 
-    kul::hash::map::S2T<std::shared_ptr<httplus::http::AServer>> servers;
-    a.load(servers, sites);
-    std::vector<std::pair<std::shared_ptr<httplus::http::AServer>, std::shared_ptr<kul::Thread>>> thr;
-    for(const auto& site : servers){
-        auto& s(site.second);
-        std::shared_ptr<kul::Thread> th = std::make_shared<kul::Thread>(std::ref(*s.get()));
-        thr.push_back(std::make_pair(s, th));
-        auto st = [&s](int16_t){ s->stop(); };
-        sig.intr(st).segv(st);
-    }
-    try{
-        for(auto& t : thr) t.second->run();
-        while(1){
-            kul::this_thread::sleep(100);            
-            std::exception_ptr e;
-            for(auto& t : thr)
-                if(t.second->exception()){
-                    e = t.second->exception();
-                    if(e) break;
-                }
-            if(e){
-                for(const auto site : servers) site.second->stop();
-                std::rethrow_exception(e);
-            }
+  kul::hash::map::S2T<std::shared_ptr<httplus::http::AServer>> servers;
+  a.load(servers, sites);
+  std::vector<std::pair<std::shared_ptr<httplus::http::AServer>,
+                        std::shared_ptr<kul::Thread>>>
+      thr;
+  for (const auto& site : servers) {
+    auto& s(site.second);
+    std::shared_ptr<kul::Thread> th =
+        std::make_shared<kul::Thread>(std::ref(*s.get()));
+    thr.push_back(std::make_pair(s, th));
+    auto st = [&s](int16_t) { s->stop(); };
+    sig.intr(st).segv(st);
+  }
+  try {
+    for (auto& t : thr) t.second->run();
+    while (1) {
+      kul::this_thread::sleep(100);
+      std::exception_ptr e;
+      for (auto& t : thr)
+        if (t.second->exception()) {
+          e = t.second->exception();
+          if (e) break;
         }
+      if (e) {
+        for (const auto site : servers) site.second->stop();
+        std::rethrow_exception(e);
+      }
     }
-    catch(const kul::Exit& e){ if(e.code() != 0) KERR << e.stack(); return e.code(); }
-    catch(const kul::Exception& e){ KERR << e.stack(); return 2;}
-    catch(const std::exception& e){ KERR << e.what(); return 3;}
-    catch(...)                    { KLOG(ERR) << "UNKNOWN EXCEPTION CAUGHT"; return 5;}
-    return 0;
+  } catch (const kul::Exit& e) {
+    if (e.code() != 0) KERR << e.stack();
+    return e.code();
+  } catch (const kul::Exception& e) {
+    KERR << e.stack();
+    return 2;
+  } catch (const std::exception& e) {
+    KERR << e.what();
+    return 3;
+  } catch (...) {
+    KLOG(ERR) << "UNKNOWN EXCEPTION CAUGHT";
+    return 5;
+  }
+  return 0;
 }

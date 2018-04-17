@@ -35,70 +35,61 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "httplus/html.hpp"
 
-namespace httplus{ namespace yaml{
+namespace httplus {
+namespace yaml {
 
-class Exception : public kul::Exception{
-    public:
-        Exception(const char*f, const uint16_t& l, const std::string& s) : kul::Exception(f, l, s){}
+class Exception : public kul::Exception {
+ public:
+  Exception(const char* f, const uint16_t& l, const std::string& s)
+      : kul::Exception(f, l, s) {}
 };
 
 class Conf : public kul::yaml::File {
-    private:
-        const kul::Dir d;
-    protected:      
-        Conf(const kul::Dir d) : kul::yaml::File(d.join("httplus.yaml")), d(d){}
-        static Conf CREATE(const kul::Dir& d){
-            kul::File f("httplus.yaml", d);
-            if(!f.is()) KEXCEPTION("httplus,yaml does not exist:\n" + f.full());
-            return kul::yaml::File::CREATE<Conf>(d.path());
-        }
-    public: 
-        Conf(const Conf& p) : kul::yaml::File(p), d(p.d){}
-        const kul::Dir&   dir() const { return d; }
-        const kul::yaml::Validator validator() const{
-            using namespace kul::yaml;
+ private:
+  const kul::Dir d;
 
-            NodeValidator sys("system", {
-                NodeValidator("threads"),
-                NodeValidator("max_request_bytes"),
-                NodeValidator("ssl_cyphers"),
-            }, 0, NodeType::MAP);
+ protected:
+  Conf(const kul::Dir d) : kul::yaml::File(d.join("httplus.yaml")), d(d) {}
+  static Conf CREATE(const kul::Dir& d) {
+    kul::File f("httplus.yaml", d);
+    if (!f.is()) KEXCEPTION("httplus,yaml does not exist:\n" + f.full());
+    return kul::yaml::File::CREATE<Conf>(d.path());
+  }
 
-            NodeValidator http_headers("header", { NodeValidator("*") }, 0, NodeType::MAP);
-            NodeValidator http("http", {
-                NodeValidator("root", 1),
-                NodeValidator("text"),
-                NodeValidator("host"),
-                NodeValidator("port"),
-                NodeValidator("home"),
-                NodeValidator("threads"),
-                http_headers
-            }, 0, NodeType::LIST);
-            NodeValidator https("https", {
-                NodeValidator("root", 1),
-                NodeValidator("text"),                
-                NodeValidator("host", 1),
-                NodeValidator("port"),
-                NodeValidator("crt", 1),
-                NodeValidator("key", 1),
-                NodeValidator("chain"),
-                NodeValidator("home"),
-                NodeValidator("threads"),
-                NodeValidator("ssl_cyphers"),
-                http_headers
-            }, 0, NodeType::LIST);
-            return Validator({
-                sys,
-                http, 
-                https
-            });
-        }
-        static Conf CREATE(){
-            return Conf::CREATE(kul::Dir(kul::env::CWD()));
-        }
-        friend class kul::yaml::File;
+ public:
+  Conf(const Conf& p) : kul::yaml::File(p), d(p.d) {}
+  const kul::Dir& dir() const { return d; }
+  const kul::yaml::Validator validator() const {
+    using namespace kul::yaml;
+
+    NodeValidator sys(
+        "system",
+        {
+            NodeValidator("threads"), NodeValidator("max_request_bytes"),
+            NodeValidator("ssl_cyphers"),
+        },
+        0, NodeType::MAP);
+
+    NodeValidator http_headers("header", {NodeValidator("*")}, 0,
+                               NodeType::MAP);
+    NodeValidator http(
+        "http", {NodeValidator("root", 1), NodeValidator("text"),
+                 NodeValidator("host"), NodeValidator("port"),
+                 NodeValidator("home"), NodeValidator("threads"), http_headers},
+        0, NodeType::LIST);
+    NodeValidator https(
+        "https",
+        {NodeValidator("root", 1), NodeValidator("text"),
+         NodeValidator("host", 1), NodeValidator("port"),
+         NodeValidator("crt", 1), NodeValidator("key", 1),
+         NodeValidator("chain"), NodeValidator("home"),
+         NodeValidator("threads"), NodeValidator("ssl_cyphers"), http_headers},
+        0, NodeType::LIST);
+    return Validator({sys, http, https});
+  }
+  static Conf CREATE() { return Conf::CREATE(kul::Dir(kul::env::CWD())); }
+  friend class kul::yaml::File;
 };
-
-
-}}
+}
+}
 #endif /* _HTTPLUS_YAML_HPP_ */

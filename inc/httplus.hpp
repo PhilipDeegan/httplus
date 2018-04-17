@@ -34,25 +34,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kul/log.hpp"
 #include "kul/threads.hpp"
 
-#include "httplus/http.hpp"
 #include "httplus/html.hpp"
+#include "httplus/http.hpp"
 #include "httplus/yaml.hpp"
 
-namespace httplus{
+namespace httplus {
 
-class Exception : public kul::Exception{
-    public:
-        Exception(const char*f, const uint16_t& l, const std::string& s) : kul::Exception(f, l, s){}
+class Exception : public kul::Exception {
+ public:
+  Exception(const char* f, const uint16_t& l, const std::string& s)
+      : kul::Exception(f, l, s) {}
 };
 
-class App{
-    private:
-        httplus::yaml::Conf config;
-    public:
-        App() : config(httplus::yaml::Conf::CREATE()){}
-        void load(kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http, Sites& sites) throw(httplus::Exception);
-};
+class App {
+ private:
+  httplus::yaml::Conf config;
 
+ public:
+  App() : config(httplus::yaml::Conf::CREATE()) {}
+  void load(kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http,
+            Sites& sites) throw(httplus::Exception);
+};
 }
 
 #endif /* _HTTPLUS_HPP_ */

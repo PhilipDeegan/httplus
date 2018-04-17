@@ -33,6 +33,4 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //#include "httplus/def.hpp"
 
-
-
 #endif /* _HTTPLUS_DEF_HPP_ */

@@ -30,73 +30,88 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus/yaml.hpp"
 
-class Head : public httplus::Page{
-    public:
-        Head(){
-            auto css(std::make_shared<kul::html4::tag::Named>("link"));
-            css->attribute("rel" , "stylesheet");
-            css->attribute("type", "text/css");
-            css->attribute("href", "res/css.css");
-            head(css);
-            head(std::make_shared<kul::html4::Text>("<link rel=\"icon\" type=\"image/png\" href=\"data:;base64,iVBORw0KGgo=\" >"));
-        }
+class Head : public httplus::Page {
+ public:
+  Head() {
+    auto css(std::make_shared<kul::html4::tag::Named>("link"));
+    css->attribute("rel", "stylesheet");
+    css->attribute("type", "text/css");
+    css->attribute("href", "res/css.css");
+    head(css);
+    head(std::make_shared<kul::html4::Text>(
+        "<link rel=\"icon\" type=\"image/png\" "
+        "href=\"data:;base64,iVBORw0KGgo=\" >"));
+  }
 };
 
-class Index : public Head{
-    public:
-        Index(){
-            // A BASIC SETUP FOR ALL INSTANCES OF THIS TYPE
-            head(std::make_shared<kul::html4::tag::Named>("title", "Index"));
+class Index : public Head {
+ public:
+  Index() {
+    // A BASIC SETUP FOR ALL INSTANCES OF THIS TYPE
+    head(std::make_shared<kul::html4::tag::Named>("title", "Index"));
 
-            std::shared_ptr<kul::html4::Tag> div(std::make_shared<kul::html4::tag::Named>("div"));
-            div->attribute("class", "body");
-            std::shared_ptr<kul::html4::Tag> txt(std::make_shared<kul::html4::tag::Label>("SOME TEXT HERE"));
-            std::string e("& < > \" ' / / ' \" > < &");
-            kul::HTML::ESC(e);
-            div->add(txt).br().add(std::make_shared<kul::html4::tag::Label>(e));
-            body(div);
-            std::shared_ptr<kul::html4::Tag> div1(std::make_shared<kul::html4::tag::Named>("div"));
-            div1->attribute("class", "body").add(std::make_shared<kul::html4::esc::Text>("& < > \" ' / / ' \" > < &"));
+    std::shared_ptr<kul::html4::Tag> div(
+        std::make_shared<kul::html4::tag::Named>("div"));
+    div->attribute("class", "body");
+    std::shared_ptr<kul::html4::Tag> txt(
+        std::make_shared<kul::html4::tag::Label>("SOME TEXT HERE"));
+    std::string e("& < > \" ' / / ' \" > < &");
+    kul::HTML::ESC(e);
+    div->add(txt).br().add(std::make_shared<kul::html4::tag::Label>(e));
+    body(div);
+    std::shared_ptr<kul::html4::Tag> div1(
+        std::make_shared<kul::html4::tag::Named>("div"));
+    div1->attribute("class", "body")
+        .add(std::make_shared<kul::html4::esc::Text>(
+            "& < > \" ' / / ' \" > < &"));
 
-            std::shared_ptr<kul::html4::Tag> p(std::make_shared<kul::html4::tag::Named>("p", "Enter the competition by "));
-            std::shared_ptr<kul::html4::Tag> r(std::make_shared<kul::html4::tag::Named>("mark", "January 30, 2011"));
-            r->attribute("class", "red");
-            std::shared_ptr<kul::html4::Tag> b(std::make_shared<kul::html4::tag::Named>("mark", "summer"));
-            b->attribute("class", "blue");
-            
-            p->add(r).text(" and you could win up to $$$$ — including amazing ")
-                .add(b).text(" trips!")
-                .esc("& < > \" ' / / ' \" > < &");
-            body(p).body(div);
-        }
-        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
-        virtual void pre (const kul::http::A1_1Request& req){
-            // called before render
-            // "this" is a now a copy of the original
-        }
-        virtual void post(const kul::http::A1_1Request& req, kul::http::Response& res){
-            // called after render
-            // "this" is disposed of shortly after this method
-        }
+    std::shared_ptr<kul::html4::Tag> p(std::make_shared<kul::html4::tag::Named>(
+        "p", "Enter the competition by "));
+    std::shared_ptr<kul::html4::Tag> r(
+        std::make_shared<kul::html4::tag::Named>("mark", "January 30, 2011"));
+    r->attribute("class", "red");
+    std::shared_ptr<kul::html4::Tag> b(
+        std::make_shared<kul::html4::tag::Named>("mark", "summer"));
+    b->attribute("class", "blue");
+
+    p->add(r)
+        .text(" and you could win up to $$$$ — including amazing ")
+        .add(b)
+        .text(" trips!")
+        .esc("& < > \" ' / / ' \" > < &");
+    body(p).body(div);
+  }
+  std::shared_ptr<Page> clone() { return httplus::Page::clone(*this); }
+  virtual void pre(const kul::http::A1_1Request& req) {
+    // called before render
+    // "this" is a now a copy of the original
+  }
+  virtual void post(const kul::http::A1_1Request& req,
+                    kul::http::Response& res) {
+    // called after render
+    // "this" is disposed of shortly after this method
+  }
 };
 
-class _404 : public Head{
-    public:
-        _404(){
-            std::shared_ptr<kul::html4::Tag> div(std::make_shared<kul::html4::tag::Named>("div"));
-            div->attribute("class", "body");
-            div->text("NOT FOUND - 404");
-            body(div);
-        }
-        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
+class _404 : public Head {
+ public:
+  _404() {
+    std::shared_ptr<kul::html4::Tag> div(
+        std::make_shared<kul::html4::tag::Named>("div"));
+    div->attribute("class", "body");
+    div->text("NOT FOUND - 404");
+    body(div);
+  }
+  std::shared_ptr<Page> clone() { return httplus::Page::clone(*this); }
 };
 
-class CSS : public httplus::Page{
-    private:
-        std::string s;
-    public:
-        CSS(){
-s = R"(/* CSS */
+class CSS : public httplus::Page {
+ private:
+  std::string s;
+
+ public:
+  CSS() {
+    s = R"(/* CSS */
 
 body {
     background: #111111;
@@ -128,12 +143,11 @@ mark.blue {
     color:#0000A0;
     background: none;
 })";
-        }
-        std::shared_ptr<Page> clone(){ return httplus::Page::clone(*this); }
-        virtual const std::string* render(){
-            return &s;
-        }
-        virtual void post(const kul::http::A1_1Request& req, kul::http::Response& res){
-            res.header("Content-Type", "text/css; charset=utf-8");
-        }
+  }
+  std::shared_ptr<Page> clone() { return httplus::Page::clone(*this); }
+  virtual const std::string* render() { return &s; }
+  virtual void post(const kul::http::A1_1Request& req,
+                    kul::http::Response& res) {
+    res.header("Content-Type", "text/css; charset=utf-8");
+  }
 };

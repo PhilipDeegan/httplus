@@ -1,6 +1,8 @@
 #! clean build -tSa "-O2 -fPIC -D_KUL_HTTPS_" -p test -l "-lssl -lcrypto -pthread" -d
 
 name: httplus
+version: master
+scm: https://github.com/dekken/httplus
 
 parent: c
 
@@ -8,7 +10,7 @@ profile:
   - name: c
     inc: ./inc
     src: ./src
-    dep: 
+    dep:
       - name: mkn.ram
         profile: https
       - name: parse.yaml
@@ -18,3 +20,10 @@ profile:
     inc: ./usr
     main: test.cpp
     mode: none
+
+  - name: format
+    mod:
+    - name: clang.format
+      init:
+        style: google
+        paths: .
