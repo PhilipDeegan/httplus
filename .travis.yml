@@ -13,4 +13,4 @@ script:
   - SSL_INC=/usr/local/opt/openssl/include
   - SSL_LIB=/usr/local/opt/openssl/lib
   - export MKN_LIB_LINK_LIB=1
-  - ./mkn build -dtKa "-O2 -std=c++14" -l "-pthread -ldl" -p test run
+  - ./mkn build -dtSa "-O2 -std=c++14" -l "-pthread -ldl" -p test run -f "$SSL_INC" -F "$SSL_LIB"
