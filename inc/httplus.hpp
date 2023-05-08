@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016, Philip Deegan.
+Copyright (c) 2023, Philip Deegan.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _HTTPLUS_HPP_
 #define _HTTPLUS_HPP_
 
-#include "kul/log.hpp"
-#include "kul/threads.hpp"
+#include "mkn/kul/log.hpp"
+#include "mkn/kul/threads.hpp"
 
 #include "httplus/html.hpp"
 #include "httplus/http.hpp"
@@ -40,10 +40,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace httplus {
 
-class Exception : public kul::Exception {
+class Exception : public mkn::kul::Exception {
  public:
   Exception(const char* f, const uint16_t& l, const std::string& s)
-      : kul::Exception(f, l, s) {}
+      : mkn::kul::Exception(f, l, s) {}
 };
 
 class App {
@@ -52,9 +52,9 @@ class App {
 
  public:
   App() : config(httplus::yaml::Conf::CREATE()) {}
-  void load(kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http,
-            Sites& sites) throw(httplus::Exception);
+  void load(mkn::kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http, Sites& sites)
+      KTHROW(httplus::Exception);
 };
-}
+}  // namespace httplus
 
 #endif /* _HTTPLUS_HPP_ */

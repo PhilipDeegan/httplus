@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016, Philip Deegan.
+Copyright (c) 2023, Philip Deegan.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,34 +31,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _HTTPLUS_PAGE_HPP_
 #define _HTTPLUS_PAGE_HPP_
 
-#include "kul/html4.hpp"
-#include "kul/http.hpp"
-#include "kul/log.hpp"
-#include "kul/threads.hpp"
+#include "mkn/kul/log.hpp"
+#include "mkn/kul/threads.hpp"
+
+#include "mkn/ram/http.hpp"
+#include "mkn/ram/html4.hpp"
 
 namespace httplus {
 
-class Page : public kul::html4::Page {
+class Page : public mkn::ram::html4::Page {
  protected:
   template <class T>
-  std::shared_ptr<T> clone(const T& src) {
+  std::shared_ptr<T> clone(const T& /*src*/) {
     return std::make_shared<T>();
   }
 
  public:
   virtual std::shared_ptr<Page> clone() = 0;  //{ return clone(*this); }
-  virtual void pre(const kul::http::A1_1Request& req) {}
-  virtual void post(const kul::http::A1_1Request& req,
-                    kul::http::Response& res) {}
+  virtual void pre(const mkn::ram::http::A1_1Request& /*req*/) {}
+  virtual void post(const mkn::ram::http::A1_1Request& /*req*/, mkn::ram::http::Response& /*res*/) {
+  }
 };
-typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
+typedef mkn::kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
 
 class XXXError {
  public:
   virtual void recover(Page& e) = 0;
 };
 
-typedef kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
-typedef kul::hash::map::S2T<Pages> Sites;
-}
+typedef mkn::kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
+typedef mkn::kul::hash::map::S2T<Pages> Sites;
+}  // namespace httplus
 #endif /* _HTTPLUS_PAGE_HPP_ */

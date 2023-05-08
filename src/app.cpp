@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016, Philip Deegan.
+Copyright (c) 2023, Philip Deegan.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,26 +30,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus.hpp"
 
-void httplus::App::load(
-    kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http_orS,
-    Sites& sites) throw(httplus::Exception) {
+void httplus::App::load(mkn::kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http_orS,
+                        Sites& sites) KTHROW(httplus::Exception) {
   std::shared_ptr<http::Conf> defHttp;
 
   auto threads_lambda = [&](const YAML::Node& c) -> uint16_t {
-    if (c["threads"]) return kul::String::UINT16(c["threads"].Scalar());
+    if (c["threads"]) return mkn::kul::String::UINT16(c["threads"].Scalar());
     if (config.root()["threads"])
-      return kul::String::UINT16(config.root()["threads"].Scalar());
+      return mkn::kul::String::UINT16(config.root()["threads"].Scalar());
     return 1;
   };
 
   if (config.root()["http"])
     for (const YAML::Node& c : config.root()["http"]) {
-      if (defHttp && !c["host"])
-        KEXCEPTION("Only one http allowed without 'host' parameter");
+      if (defHttp && !c["host"]) KEXCEPTION("Only one http allowed without 'host' parameter");
       const std::string& port(c["port"] ? c["port"].Scalar() : "80");
-      kul::Dir d(c["root"].Scalar());
+      mkn::kul::Dir d(c["root"].Scalar());
       if (!d) KEXCEPTION("Directory does not exist: " + c["root"].Scalar());
-      kul::Dir p("pub", d);
+      mkn::kul::Dir p("pub", d);
       if (!p && !p.mk()) KEXCEPTION("Invalid access on directory: " + d.real());
       std::string home(c["home"] ? c["home"].Scalar() : "");
       const std::string txt(c["text"] ? c["text"].Scalar() : "");
@@ -59,17 +57,17 @@ void httplus::App::load(
         continue;
       }
       const Pages& pages((*sites.find(hsh)).second);
-      auto ser(std::make_shared<http::Server>(kul::String::UINT16(port),
-                                              threads_lambda(c), pages));
-      ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(
-                                                c["root"].Scalar(), home, txt));
+      auto ser(
+          std::make_shared<http::Server>(mkn::kul::String::UINT16(port), threads_lambda(c), pages));
+      ser->confs.insert(c["host"].Scalar(),
+                        std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
       http_orS.insert(port, ser);
     }
   if (config.root()["https"])
     for (const YAML::Node& c : config.root()["https"]) {
-      kul::Dir d(c["root"].Scalar());
+      mkn::kul::Dir d(c["root"].Scalar());
       if (!d) KEXCEPTION("Directory does not exist: " + c["root"].Scalar());
-      kul::Dir p("pub", d);
+      mkn::kul::Dir p("pub", d);
       if (!p && !p.mk()) KEXCEPTION("Invalid access on directory: " + d.real());
       const std::string& port(c["port"] ? c["port"].Scalar() : "443");
       const std::string hsh(std::to_string(std::hash<std::string>()(d.real())));
@@ -80,26 +78,25 @@ void httplus::App::load(
       const Pages& pages((*sites.find(hsh)).second);
       const std::string ssls([&] {
         if (c["ssl_cyphers"]) return c["ssl_cyphers"].Scalar();
-        if (config.root()["ssl_cyphers"])
-          return config.root()["ssl_cyphers"].Scalar();
+        if (config.root()["ssl_cyphers"]) return config.root()["ssl_cyphers"].Scalar();
         return std::string("");
       }());
-      kul::File crt(c["crt"].Scalar());
+      mkn::kul::File crt(c["crt"].Scalar());
       if (!crt) KEXCEPTION("File does not exist: " + crt.full());
-      kul::File key(c["key"].Scalar());
+      mkn::kul::File key(c["key"].Scalar());
       if (!key) KEXCEPTION("File does not exist: " + key.full());
-      auto ser(std::make_shared<https::Server>(
-          kul::String::UINT16(port), threads_lambda(c), pages, crt, key, ssls));
+      auto ser(std::make_shared<https::Server>(mkn::kul::String::UINT16(port), threads_lambda(c),
+                                               pages, crt, key, ssls));
       ser->init();
       if (c["chain"]) {
-        if (!kul::File(c["chain"].Scalar()))
+        if (!mkn::kul::File(c["chain"].Scalar()))
           KEXCEPTION("File does not exist: " + c["chain"].Scalar());
         ser->setChain(c["chain"].Scalar());
       }
       std::string home(c["home"] ? c["home"].Scalar() : "");
       const std::string txt(c["text"] ? c["text"].Scalar() : "");
-      ser->confs.insert(c["host"].Scalar(), std::make_shared<http::Conf>(
-                                                c["root"].Scalar(), home, txt));
+      ser->confs.insert(c["host"].Scalar(),
+                        std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
       http_orS.insert(port, ser);
     }
 }

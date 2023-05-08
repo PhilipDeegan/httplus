@@ -3,18 +3,18 @@
 #   threads: 4
 
 http:
-- root: /var/www/global       # no default, mandatory
+- root: res/www               # no default, mandatory
   host: localhost             # missing assumed default for port
   port: 8888                  # default 80
   home: index                 # optional default page/generator
   # header:
   #     Content-Type: text/html
-- root: /var/www/global       # no default, mandatory
+- root: res/www               # no default, mandatory
   port: 8888                  # default 80
   home: index                 # optional default page/generator
 
 # https:
-#   - root: /var/www/global       # no default, mandatory
+#   - root: res/www       # no default, mandatory
 #     host: localhost             # no default, mandatory
 #     port: 443                   # default 443
 #     home: index                 # optional default page/generator
