@@ -101,7 +101,8 @@ int self_test() {
 // --serve: run until interrupted
 int main(int argc, char* argv[]) {
   bool const serve = argc > 1 && std::string_view(argv[1]) == "--serve";
-  for (auto const sig : {SIGINT, SIGTERM}) std::signal(sig, [](int) { interrupted = 1; });
+  if (serve)  // self test keeps default handling so it can be interrupted or timed out
+    for (auto const sig : {SIGINT, SIGTERM}) std::signal(sig, [](int) { interrupted = 1; });
 
   httplus::Pages pages{
       {"404", std::make_shared<NotFound>()},
