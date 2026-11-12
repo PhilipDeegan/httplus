@@ -28,33 +28,55 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _HTTPLUS_HPP_
-#define _HTTPLUS_HPP_
+#ifndef HTTPLUS_HPP_
+#define HTTPLUS_HPP_
 
-#include "mkn/kul/log.hpp"
-#include "mkn/kul/threads.hpp"
+#include "mkn/kul/except.hpp"
 
 #include "httplus/html.hpp"
 #include "httplus/http.hpp"
 #include "httplus/yaml.hpp"
 
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <string>
+
 namespace httplus {
 
 class Exception : public mkn::kul::Exception {
  public:
-  Exception(const char* f, const uint16_t& l, const std::string& s)
+  Exception(char const* f, std::uint16_t const& l, std::string const& s)
       : mkn::kul::Exception(f, l, s) {}
 };
 
-class App {
- private:
-  httplus::yaml::Conf config;
+using Servers = std::map<std::uint16_t, std::shared_ptr<http::AServer>>;  // port -> server
 
+class App {
  public:
-  App() : config(httplus::yaml::Conf::CREATE()) {}
-  void load(mkn::kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http, Sites& sites)
-      KTHROW(httplus::Exception);
+  // reads httplus.yaml from `dir`
+  explicit App(std::filesystem::path const& dir = std::filesystem::current_path())
+      : config(yaml::Conf::CREATE(dir)) {}
+
+  // creates a server per configured port; `sites` keys are root directories as written in
+  // httplus.yaml, relative to the process working directory, or absolute
+  App& load(Sites const& sites);
+
+  App& start();
+  App& stop();
+  App& join();
+  // the first server exception, if any
+  std::exception_ptr exception() const;
+
+  Servers const& servers() const { return _servers; }
+
+ private:
+  yaml::Conf config;
+  Servers _servers;
 };
+
 }  // namespace httplus
 
-#endif /* _HTTPLUS_HPP_ */
+#endif /* HTTPLUS_HPP_ */

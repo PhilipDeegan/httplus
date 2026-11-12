@@ -28,61 +28,111 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "mkn/kul/signal.hpp"
+#include "mkn/kul/log.hpp"
 
 #include "html.hpp"
 #include "httplus.hpp"
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
-  mkn::kul::Signal sig;
-  httplus::App a;
-  httplus::Sites sites;
+#include <chrono>
+#include <csignal>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <thread>
 
-  httplus::Pages glbP;
-  glbP.insert("404", std::make_shared<_404>());
-  glbP.insert("index", std::make_shared<Index>());
-  glbP.insert("res/css.css", std::make_shared<CSS>());
-  sites.insert(std::to_string(std::hash<std::string>()("res/www")), glbP);
+namespace {
 
-  mkn::kul::hash::map::S2T<std::shared_ptr<httplus::http::AServer>> servers;
-  a.load(servers, sites);
-  std::vector<std::pair<std::shared_ptr<httplus::http::AServer>, std::shared_ptr<mkn::kul::Thread>>>
-      thr;
-  for (const auto& site : servers) {
-    auto& s(site.second);
-    std::shared_ptr<mkn::kul::Thread> th = std::make_shared<mkn::kul::Thread>(std::ref(*s.get()));
-    thr.push_back(std::make_pair(s, th));
-    auto st = [&s](int16_t) { s->stop(); };
-    sig.intr(st).segv(st);
-  }
+volatile std::sig_atomic_t interrupted = 0;
+
+struct Result {
+  std::uint16_t status = 0;
+  std::string body, type;
+};
+
+template <class Get = mkn::ram::http::Get>
+Result get(std::string const& host, std::string const& path, std::uint16_t const port) {
+  Result result;
+  Get(host, path, port)
+      .withResponse([&](httplus::Response const& r) {
+        result.status = r.status();
+        result.body = r.body();
+        if (auto const it = r.headers().find("Content-Type"); it != r.headers().end())
+          result.type = it->second;
+      })
+      .send();
+  return result;
+}
+
+template <class Get = mkn::ram::http::Get>
+int check(std::string const& host, std::string const& path, std::uint16_t const status,
+          std::string_view const contains, std::uint16_t const port = 8888) {
+  auto const r = get<Get>(host, path, port);
+  bool const ok = r.status == status && r.body.find(contains) != std::string::npos;
+  std::cout << (ok ? "PASS " : "FAIL ") << host << ":" << port << "/" << path << " -> " << r.status
+            << " " << r.type << std::endl;
+  return ok ? 0 : 1;
+}
+
+int self_test() {
+  std::ofstream("res/www/pub/hello.txt") << "hello world";
+  int failures = 0;
+  failures += check("localhost", "", 200, "SOME TEXT HERE");              // home page
+  failures += check("localhost", "res/css.css", 200, "mark.red");         // generator
+  failures += check("localhost", "hello.txt", 200, "hello world");        // static file
+  failures += check("localhost", "hell%6F.txt", 200, "hello world");      // percent decoding
+  failures += check("localhost", "nope", 404, "NOT FOUND - 404");         // 404 generator
+  failures += check("localhost", "../log/access.log", 404, "NOT FOUND");  // traversal
+  failures += check("127.0.0.1", "", 200, "SOME TEXT HERE");              // default host
+
+  using HttpsGet = mkn::ram::https::Get;
+  failures += check<HttpsGet>("localhost", "", 200, "SOME TEXT HERE", 8443);
+  failures += check<HttpsGet>("localhost", "res/css.css", 200, "mark.red", 8443);
+  failures += check<HttpsGet>("localhost", "hello.txt", 200, "hello world", 8443);
+  failures += check<HttpsGet>("localhost", "nope", 404, "NOT FOUND - 404", 8443);
+  failures += check<HttpsGet>("127.0.0.1", "", 404, "Unknown host", 8443);  // https host mandatory
+  return failures;
+}
+
+}  // namespace
+
+// without arguments: start, run the self test, stop
+// --serve: run until interrupted
+int main(int argc, char* argv[]) {
+  bool const serve = argc > 1 && std::string_view(argv[1]) == "--serve";
+  if (serve)  // self test keeps default handling so it can be interrupted or timed out
+    for (auto const sig : {SIGINT, SIGTERM}) std::signal(sig, [](int) { interrupted = 1; });
+
+  httplus::Pages pages{
+      {"404", std::make_shared<NotFound>()},
+      {"index", std::make_shared<Index>()},
+      {"res/css.css", std::make_shared<CSS>()},
+  };
+
   try {
-    for (auto& t : thr) t.second->run();
-    std::size_t runtime = 100;
-    while (--runtime > 0) {
-      mkn::kul::this_thread::sleep(100);
-      std::exception_ptr e;
-      for (auto& t : thr)
-        if (t.second->exception()) {
-          e = t.second->exception();
-          if (e) break;
-        }
-      if (e) {
-        for (const auto site : servers) site.second->stop();
-        std::rethrow_exception(e);
-      }
-    }
-  } catch (const mkn::kul::Exit& e) {
-    if (e.code() != 0) KERR << e.stack();
-    return e.code();
-  } catch (const mkn::kul::Exception& e) {
+    httplus::App app;
+    app.load({{"res/www", pages}}).start();
+
+    int code = 0;
+    if (serve) {
+      while (!interrupted && !app.exception())
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } else
+      code = self_test();
+
+    auto const e = app.exception();
+    app.stop().join();
+    if (e) std::rethrow_exception(e);
+    return code;
+  } catch (mkn::kul::Exception const& e) {
     KERR << e.stack();
     return 2;
-  } catch (const std::exception& e) {
+  } catch (std::exception const& e) {
     KERR << e.what();
     return 3;
   } catch (...) {
-    KLOG(ERR) << "UNKNOWN EXCEPTION CAUGHT";
+    KERR << "UNKNOWN EXCEPTION CAUGHT";
     return 5;
   }
-  return 0;
 }

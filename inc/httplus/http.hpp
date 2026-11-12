@@ -28,182 +28,119 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _HTTPLUS_HTTP_HPP_
-#define _HTTPLUS_HTTP_HPP_
+#ifndef HTTPLUS_HTTP_HPP_
+#define HTTPLUS_HTTP_HPP_
 
-#include "mkn/kul/io.hpp"
-#include "mkn/kul/dbg.hpp"
+#include "mkn/kul/except.hpp"
+#include "mkn/kul/os.hpp"
+#include "mkn/ram/http.hpp"
 #include "mkn/ram/https.hpp"
 
-#include "httplus/def.hpp"
 #include "httplus/html.hpp"
 
-#ifdef _HTTPLUS_ACCEPT_GZIP_
-#include <zlib.h>
-#endif /* _HTTPLUS_ACCEPT_GZIP_ */
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
-namespace httplus {
-
-#ifdef _HTTPLUS_ACCEPT_GZIP_
-class GzException : public mkn::kul::Exception {
- public:
-  GzException(const char* f, const uint16_t& l, const std::string& s)
-      : mkn::kul::Exception(f, l, s) {}
-};
-
-class Gzipper {
- public:
-  static void COMPRESS(const std::string& in, std::string& out,
-                       int16_t compression = Z_BEST_COMPRESSION) KTHROW(GzException) {
-    z_stream zstr;
-    memset(&zstr, 0, sizeof(zstr));
-    if (deflateInit(&zstr, compression) != Z_OK) KEXCEPT(GzException, "zlib deflateInit failed");
-    zstr.avail_in = in.size();
-    zstr.next_in = (Bytef*)in.data();
-    char buff[23456];
-    int16_t e = 0;
-    do {
-      zstr.next_out = reinterpret_cast<Bytef*>(buff);
-      zstr.avail_out = sizeof(buff);
-      e = deflate(&zstr, Z_FINISH);
-      if (out.size() < zstr.total_out) out.append(std::string(buff, zstr.total_out - out.size()));
-    } while (e == Z_OK);
-    deflateEnd(&zstr);
-    if (e != Z_STREAM_END) {
-      std::stringstream ss;
-      ss << "zlib compression issue: (" << e << ") " << zstr.msg;
-      KEXCEPT(GzException, ss.str());
-    }
-  }
-};
-#endif /* _HTTPLUS_ACCEPT_GZIP_ */
-
-class App;
-namespace https {
-class Server;
-}
-namespace http {
+namespace httplus::http {
 
 class Exception : public mkn::kul::Exception {
  public:
-  Exception(const char* f, const uint16_t& l, const std::string& s)
+  Exception(char const* f, std::uint16_t const& l, std::string const& s)
       : mkn::kul::Exception(f, l, s) {}
 };
 
-class Responder;
+// One virtual host: static files under ${root}/pub, generators in `pages`, logs in ${root}/log
 class Conf {
- protected:
-  const std::string home, root;
-  mkn::kul::File a, e;
-  mkn::kul::io::Writer acc, err;
-  std::vector<std::string> txt;
-
  public:
-  Conf(const std::string& r, const std::string& h = "", const std::string& t = "")
-      : home(h),
-        root(r),
-        a(mkn::kul::File("access.log", mkn::kul::Dir(r).join("log"))),
-        e(mkn::kul::File("error.log", mkn::kul::Dir(r).join("log"))),
-        acc(a, 1),
-        err(e, 1) {
-    mkn::kul::String::SPLIT(t, ' ', txt);
-  }
-  friend class Responder;
-};
-typedef mkn::kul::hash::map::S2T<std::shared_ptr<Conf>> Confs;
+  Conf(std::filesystem::path const& root, Pages pages, std::string home = "",
+       std::vector<std::string> text = {},
+       std::unordered_map<std::string, std::string> headers = {});
 
-class Responder {
+  // the file under pub/ that `resource` names, if it exists and does not escape pub/
+  std::optional<std::filesystem::path> file(std::string_view resource) const;
+
+  void access(std::string_view line);
+  void error(std::string_view line);
+
+  std::filesystem::path const root, pub;
+  std::string const home;
+  std::vector<std::string> const text;  // file extensions served as text/plain
+  std::unordered_map<std::string, std::string> const headers;
+  Pages const pages;
+
  private:
-  mkn::kul::hash::map::S2S dlts;
-  Responder() {
-    dlts.insert("pdf", "application/pdf");
-    dlts.insert("exe", "application/octet-stream");
-    dlts.insert("zip", "application/zip");
-    dlts.insert("doc", "application/msword");
-    dlts.insert("xls", "application/vnd.ms-excel");
-    dlts.insert("ppt", "application/vnd.ms-powerpoint");
-    dlts.insert("gif", "image/gif");
-    dlts.insert("png", "image/png");
-    dlts.insert("jpeg", "image/jpg");
-    dlts.insert("jpg", "image/jpg");
-  }
-  static Responder& INSTANCE() {
-    static Responder i;
-    return i;
-  }
-  const mkn::ram::http::Response& response(mkn::ram::http::Response& res,
-                                           const mkn::ram::http::A1_1Request& req, const Pages& ps,
-                                           const Confs& confs) KTHROW(httplus::http::Exception);
-
-  friend class Server;
-  friend class https::Server;
+  std::mutex _log_mutex;
+  std::ofstream _acc, _err;
 };
+
+using Confs = std::unordered_map<std::string, std::shared_ptr<Conf>>;  // host -> conf, "" any host
+
+Response respond(Request const& req, Confs const& confs);
 
 class AServer {
- protected:
-  mkn::kul::hash::map::S2S _headers;
-
  public:
-  virtual mkn::ram::http::Response respond(const mkn::ram::http::A1_1Request& req) = 0;
+  virtual ~AServer() = default;
+  virtual void start() = 0;
   virtual void stop() = 0;
-  virtual void operator()() = 0;
+  virtual void join() = 0;
+  virtual std::exception_ptr exception() const = 0;
+
+  // host "" serves requests whose Host matches no other conf
+  void add(std::string const& host, std::shared_ptr<Conf> const& conf);
+  Confs const& confs() const { return _confs; }
+
+ protected:
+  Confs _confs;
 };
 
 class Server : public httplus::http::AServer, public mkn::ram::http::MultiServer {
-  friend class mkn::kul::Thread;
-  friend class httplus::App;
-  friend class https::Server;
+ public:
+  Server(std::uint16_t const port, std::uint8_t const threads)
+      : mkn::ram::http::MultiServer(port, threads, threads) {}
 
- private:
-  const Pages& ps;
-  Confs confs;
-  void operator()() override { mkn::ram::http::MultiServer::start(); }
-  mkn::ram::http::Response respond(const mkn::ram::http::A1_1Request& req) override {
-    KUL_DBG_FUNC_ENTER
-    mkn::ram::http::_1_1Response r;
-    Responder::INSTANCE().response(r, req, ps, confs);
-    return RESPONSE_HEADERS(r);
+  void start() override { mkn::ram::http::MultiServer::start(); }
+  void stop() override { mkn::ram::http::MultiServer::stop(); }
+  void join() override { mkn::ram::http::MultiServer::join(); }
+  std::exception_ptr exception() const override { return mkn::ram::http::MultiServer::exception(); }
+
+ protected:
+  Response respond(Request const& req) override { return http::respond(req, _confs); }
+};
+
+}  // namespace httplus::http
+
+namespace httplus::https {
+
+class Server : public httplus::http::AServer, public mkn::ram::https::MultiServer {
+ public:
+  Server(std::uint16_t const port, std::uint8_t const threads, mkn::kul::File const& crt,
+         mkn::kul::File const& key, std::string const& ciphers = "",
+         std::optional<mkn::kul::File> const& chain = std::nullopt)
+      : mkn::ram::https::MultiServer(port, threads, threads, crt, key, ciphers) {
+    init();
+    if (chain) setChain(*chain);
+  }
+
+  void start() override { mkn::ram::https::MultiServer::start(); }
+  void stop() override { mkn::ram::https::MultiServer::stop(); }
+  void join() override { mkn::ram::https::MultiServer::join(); }
+  std::exception_ptr exception() const override {
+    return mkn::ram::https::MultiServer::exception();
   }
 
  protected:
-  static const mkn::ram::http::_1_1Response& RESPONSE_HEADERS(mkn::ram::http::_1_1Response& r) {
-    if (!r.header("Date")) r.header("Date", mkn::kul::DateTime::NOW());
-    if (!r.header("Connection")) r.header("Connection", "close");
-    if (!r.header("Content-Type")) r.header("Content-Type", "text/html");
-    if (!r.header("Content-Length")) r.header("Content-Length", std::to_string(r.body().size()));
-    return r;
-  }
-
- public:
-  Server(const uint16_t& p, const uint16_t& threads, const Pages& ps)
-      : mkn::ram::http::MultiServer(p, threads), ps(ps) {}
-  void stop() override { mkn::ram::http::MultiServer::stop(); }
-};
-}  // end namespace http
-
-namespace https {
-class Server : public httplus::http::AServer, public mkn::ram::https::MultiServer {
-  friend class mkn::kul::Thread;
-  friend class httplus::App;
-
- private:
-  const Pages& ps;
-  http::Confs confs;
-  void operator()() override { mkn::ram::https::MultiServer::start(); }
-  mkn::ram::http::Response respond(const mkn::ram::http::A1_1Request& req) override {
-    KUL_DBG_FUNC_ENTER
-    mkn::ram::http::_1_1Response r;
-    http::Responder::INSTANCE().response(r, req, ps, confs);
-    return http::Server::RESPONSE_HEADERS(r);
-  }
-
- public:
-  Server(const uint16_t& p, const uint16_t& threads, const Pages& ps, const mkn::kul::File& crt,
-         const mkn::kul::File& key, const std::string& cs = "")
-      : mkn::ram::https::MultiServer(p, threads, crt, key, cs), ps(ps) {}
-  void stop() override { mkn::ram::https::MultiServer::stop(); }
+  Response respond(Request const& req) override { return http::respond(req, _confs); }
 };
 
-}  // end namespace https
-}  // end namespace httplus
-#endif /* _HTTPLUS_HTTP_HPP_ */
+}  // namespace httplus::https
+
+#endif /* HTTPLUS_HTTP_HPP_ */
