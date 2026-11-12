@@ -28,38 +28,49 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _HTTPLUS_PAGE_HPP_
-#define _HTTPLUS_PAGE_HPP_
-
-#include "mkn/kul/log.hpp"
-#include "mkn/kul/threads.hpp"
+#ifndef HTTPLUS_HTML_HPP_
+#define HTTPLUS_HTML_HPP_
 
 #include "mkn/ram/http.hpp"
 #include "mkn/ram/html4.hpp"
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+
 namespace httplus {
 
+using Request = mkn::ram::http::A1_1Request;
+using Response = mkn::ram::http::Response;
+
+// A generator registered under a resource key. The registered instance is a prototype: every
+// request renders a fresh instance from clone(), so pre/render/post may mutate freely.
 class Page : public mkn::ram::html4::Page {
- protected:
-  template <class T>
-  std::shared_ptr<T> clone(const T& /*src*/) {
-    return std::make_shared<T>();
-  }
-
  public:
-  virtual std::shared_ptr<Page> clone() = 0;  //{ return clone(*this); }
-  virtual void pre(const mkn::ram::http::A1_1Request& /*req*/) {}
-  virtual void post(const mkn::ram::http::A1_1Request& /*req*/, mkn::ram::http::Response& /*res*/) {
-  }
+  virtual ~Page() = default;
+  virtual std::shared_ptr<Page> clone() const = 0;
+  virtual void pre(Request const& /*req*/) {}
+  virtual void post(Request const& /*req*/, Response& /*res*/) {}
 };
-typedef mkn::kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
 
+// Implements clone() by default constructing Derived: `class Index : public PageT<Index> {...}`
+// or, to share a common base, `class Index : public PageT<Index, Head> {...}`
+template <class Derived, class Base = Page>
+class PageT : public Base {
+ public:
+  std::shared_ptr<Page> clone() const override { return std::make_shared<Derived>(); }
+};
+
+// Thrown from pre/render/post to let the page repair itself, the page is then rendered again
 class XXXError {
  public:
-  virtual void recover(Page& e) = 0;
+  virtual ~XXXError() = default;
+  virtual void recover(Page& page) = 0;
 };
 
-typedef mkn::kul::hash::map::S2T<std::shared_ptr<Page>> Pages;
-typedef mkn::kul::hash::map::S2T<Pages> Sites;
+using Pages = std::unordered_map<std::string, std::shared_ptr<Page>>;  // resource -> generator
+using Sites = std::unordered_map<std::string, Pages>;                  // root directory -> pages
+
 }  // namespace httplus
-#endif /* _HTTPLUS_PAGE_HPP_ */
+
+#endif /* HTTPLUS_HTML_HPP_ */

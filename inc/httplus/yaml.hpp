@@ -28,65 +28,34 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _HTTPLUS_YAML_HPP_
-#define _HTTPLUS_YAML_HPP_
+#ifndef HTTPLUS_YAML_HPP_
+#define HTTPLUS_YAML_HPP_
 
 #include "mkn/kul/yaml.hpp"
 
-#include "httplus/html.hpp"
+#include <filesystem>
+#include <string>
 
-namespace httplus {
-namespace yaml {
+namespace httplus::yaml {
 
-class Exception : public mkn::kul::Exception {
- public:
-  Exception(const char* f, const uint16_t& l, const std::string& s)
-      : mkn::kul::Exception(f, l, s) {}
-};
-
+// httplus.yaml
 class Conf : public mkn::kul::yaml::File {
- private:
-  const mkn::kul::Dir d;
-
- protected:
-  Conf(const mkn::kul::Dir d) : mkn::kul::yaml::File(d.join("httplus.yaml")), d(d) {}
-  static Conf CREATE(const mkn::kul::Dir& d) {
-    mkn::kul::File f("httplus.yaml", d);
-    if (!f.is()) KEXCEPTION("httplus,yaml does not exist:\n" + f.full());
-    return mkn::kul::yaml::File::CREATE<Conf>(d.path());
-  }
-
  public:
-  Conf(const Conf& p) : mkn::kul::yaml::File(p), d(p.d) {}
-  const mkn::kul::Dir& dir() const { return d; }
-  const mkn::kul::yaml::Validator validator() const {
-    using namespace mkn::kul::yaml;
+  static Conf CREATE(std::filesystem::path const& dir = std::filesystem::current_path());
 
-    NodeValidator sys("system",
-                      {
-                          NodeValidator("threads"),
-                          NodeValidator("max_request_bytes"),
-                          NodeValidator("ssl_cyphers"),
-                      },
-                      0, NodeType::MAP);
+  // directory holding httplus.yaml, relative paths in the config are resolved against it
+  std::filesystem::path const& dir() const { return _dir; }
+  mkn::kul::yaml::Validator validator() const override;
 
-    NodeValidator http_headers("header", {NodeValidator("*")}, 0, NodeType::MAP);
-    NodeValidator http(
-        "http",
-        {NodeValidator("root", 1), NodeValidator("text"), NodeValidator("host"),
-         NodeValidator("port"), NodeValidator("home"), NodeValidator("threads"), http_headers},
-        0, NodeType::LIST);
-    NodeValidator https("https",
-                        {NodeValidator("root", 1), NodeValidator("text"), NodeValidator("host", 1),
-                         NodeValidator("port"), NodeValidator("crt", 1), NodeValidator("key", 1),
-                         NodeValidator("chain"), NodeValidator("home"), NodeValidator("threads"),
-                         NodeValidator("ssl_cyphers"), http_headers},
-                        0, NodeType::LIST);
-    return Validator({sys, http, https});
-  }
-  static Conf CREATE() { return Conf::CREATE(mkn::kul::Dir(mkn::kul::env::CWD())); }
+ private:
+  Conf(std::string const& file)
+      : mkn::kul::yaml::File(file), _dir(std::filesystem::path(file).parent_path()) {}
+
+  std::filesystem::path _dir;
+
   friend class mkn::kul::yaml::File;
 };
-}  // namespace yaml
-}  // namespace httplus
-#endif /* _HTTPLUS_YAML_HPP_ */
+
+}  // namespace httplus::yaml
+
+#endif /* HTTPLUS_YAML_HPP_ */

@@ -7,34 +7,47 @@ Rules
 
 All html/css/etc files must be contained under ${root}/pub.
 	e.g. /var/www/pub/index.html
-If the resource is a file, that is found, it is rendered.
+If the resource is a file, that is found under pub, it is served.
 Otherwise it is used as a key to check for generators.
+Requests resolving outside of pub, e.g. via "../" or symlinks, are not served.
 
-Generator objects are stored and retrieved using a hash of the root directory path as the key.
+Generators are registered per root directory, see httplus::Sites.
+A root with no generators serves files only.
+
+Each request renders a fresh instance of the generator from Page::clone(),
+derive from httplus::PageT<YourPage> to get clone() for free.
 
 File serving rules:
-    No file type = Text mode
-    File type is in config text field = text mode
-    else = binary mode 
+    No file type = text/html
+    File type is in config text field = text/plain
+    Known file type = its MIME type, e.g. png = image/png
+    else = application/octet-stream as an attachment
 
-404 errors are currently handled by a generator with the key "404".
+404 errors are handled by a generator with the key "404" if present, with status 404.
+Exceptions from generators respond 500 and are written to ${root}/log/error.log.
+Requests are written to ${root}/log/access.log.
 
 ## Configure
 
 httplus.yaml:
 
-ssls: <DEFAULT HTTPS CYPHER LIST>
+system:
+  threads: 2                    # default 1, per server, overridable per entry
+  ssl_cyphers: <CYPHER LIST>    # default https cypher list
 
 http:
   - root: /var/www/global       # no default, mandatory
-    host: localhost             # no default, "_" considered global
+    host: localhost             # no default
     port: 8888                  # default 80
     home: index                 # optional default page
-  - root: /var/www/global       # no default, mandatory
+    text: md log                # optional, file types served as text/plain
+    header:                     # optional, added to responses lacking them
+      Cache-Control: no-cache
+  - root: /var/www/global       # entry without host serves any host on this port
     port: 8888                  # default 80
     home: index                 # optional default page
 
-https:
+https:                          # one entry per port
   - root: /var/www/global       # no default, mandatory
     host: localhost             # no default, mandatory
     port: 443                   # default 443
@@ -42,16 +55,19 @@ https:
     crt:  /path/to/site.crt     # no default, mandatory
     key:  /path/to/site.key     # no default, mandatory
     chain: /path/to/chain.pem   # no default, optional
-    ssls: <CYPHER LIST>         # no default, optional 
+    ssl_cyphers: <CYPHER LIST>  # no default, optional
+
+Relative paths are resolved against the directory containing httplus.yaml.
 
 ## Generation
 
-See ./usr/html.hpp
+See ./usr/html.hpp and ./test.cpp
 
 
 Switches
- 
-Key             _HTTPLUS_ACCEPT_GZIP_ 
+
+Key             HTTPLUS_ACCEPT_GZIP
 Type            bool
 Default         0
-Description     Enables compression of response body when request header contains "Accept-Encoding" contains "gzip", requires zlib
+Description     Enables gzip compression of response body when request header "Accept-Encoding" contains "gzip", requires zlib
+                e.g. mkn build -a -DHTTPLUS_ACCEPT_GZIP -l -lz

@@ -1,4 +1,4 @@
-#! clean build -tSa "-O2 -fPIC -D_KUL_HTTPS_" -p test -l "-lssl -lcrypto -pthread" -d
+#! clean build run -dtOp test -a "-std=c++20 -fPIC" -l -pthread
 
 name: httplus
 # version: master

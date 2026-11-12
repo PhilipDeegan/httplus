@@ -13,10 +13,10 @@ http:
   port: 8888                  # default 80
   home: index                 # optional default page/generator
 
-# https:
-#   - root: res/www       # no default, mandatory
-#     host: localhost             # no default, mandatory
-#     port: 443                   # default 443
-#     home: index                 # optional default page/generator
-#     crt:  /path/to/site.crt     # no default, mandatory
-#     key:  /path/to/site.key     # no default, mandatory
+https:
+- root: res/www               # no default, mandatory
+  host: localhost             # no default, mandatory
+  port: 8443                  # default 443
+  home: index                 # optional default page/generator
+  crt: res/test/server.crt    # no default, mandatory, self signed for testing
+  key: res/test/server.key    # no default, mandatory

@@ -30,95 +30,267 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus/http.hpp"
 
-const mkn::ram::http::Response& httplus::http::Responder::response(
-    mkn::ram::http::Response& res, const mkn::ram::http::A1_1Request& req, const Pages& ps,
-    const Confs& confs) KTHROW(httplus::http::Exception) {
-  KUL_DBG_FUNC_ENTER
-  const std::string& resource(req.path());
+#include "mkn/kul/time.hpp"
 
-  http::Conf* conf = 0;
-  if (req.headers().count("Host")) {
-    std::vector<std::string> bits;
-    std::string host((*req.headers().find("Host")).second);
-    mkn::kul::String::SPLIT(host, ':', bits);
-    if (bits.size() > 1) host = bits[0];
-    if (confs.count(host)) conf = (*confs.find(host)).second.get();
-  }
-  std::string ct = "text/html; charset=utf-8";
-  bool e = 0;
-  if (conf) {
-    std::string r(resource.substr(1));
-    if (r.empty() && conf->home.size()) r = conf->home;
-    const mkn::kul::Dir root(conf->root);
-    const mkn::kul::Dir log(root.join("log"), 1);
-    const mkn::kul::Dir pub(root.join("pub"), 1);
-    std::stringstream ss;
-    mkn::kul::File f(pub.join(r));
-    if (f && f.dir().real().find(pub.real()) != std::string::npos) {
-      bool bin = 0;
-      if (f.name().find('.') != std::string::npos && f.name().rfind('.') + 1 < f.name().size()) {
-        const std::string& ft(f.name().substr(f.name().rfind('.') + 1));
-        if (ft == "css")
-          ct = "text/css; charset=utf-8";
-        else if (std::find(conf->txt.begin(), conf->txt.end(), ft) == conf->txt.end()) {
-          bin = 1;
-          res.header("Content-Disposition", "attachment; filename=\"" + f.name() + "\"");
-          if (dlts.count(ft))
-            res.header("Content-Type", (*dlts.find(ft)).second);
-          else
-            res.header("Content-Type", "application/force-download");
-        }
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <charconv>
+#include <iterator>
+#include <sstream>
+#include <utility>
+
+#ifdef HTTPLUS_ACCEPT_GZIP
+#include <zlib.h>
+#endif /* HTTPLUS_ACCEPT_GZIP */
+
+namespace fs = std::filesystem;
+
+namespace {
+
+constexpr std::array<std::pair<std::string_view, std::string_view>, 24> MIME_TYPES{{
+    {"html", "text/html; charset=utf-8"},
+    {"htm", "text/html; charset=utf-8"},
+    {"css", "text/css; charset=utf-8"},
+    {"js", "text/javascript; charset=utf-8"},
+    {"mjs", "text/javascript; charset=utf-8"},
+    {"json", "application/json"},
+    {"txt", "text/plain; charset=utf-8"},
+    {"xml", "application/xml"},
+    {"svg", "image/svg+xml"},
+    {"png", "image/png"},
+    {"jpg", "image/jpeg"},
+    {"jpeg", "image/jpeg"},
+    {"gif", "image/gif"},
+    {"ico", "image/x-icon"},
+    {"webp", "image/webp"},
+    {"woff", "font/woff"},
+    {"woff2", "font/woff2"},
+    {"wasm", "application/wasm"},
+    {"pdf", "application/pdf"},
+    {"zip", "application/zip"},
+    {"doc", "application/msword"},
+    {"xls", "application/vnd.ms-excel"},
+    {"ppt", "application/vnd.ms-powerpoint"},
+    {"exe", "application/octet-stream"},
+}};
+
+std::optional<std::string_view> mime_type(std::string_view const ext) {
+  auto const it = std::find_if(MIME_TYPES.begin(), MIME_TYPES.end(),
+                               [&](auto const& kv) { return kv.first == ext; });
+  if (it == MIME_TYPES.end()) return std::nullopt;
+  return it->second;
+}
+
+bool iequals(std::string_view const a, std::string_view const b) {
+  return std::ranges::equal(
+      a, b, [](unsigned char x, unsigned char y) { return std::tolower(x) == std::tolower(y); });
+}
+
+std::string_view header(httplus::Request const& req, std::string_view const name) {
+  for (auto const& [k, v] : req.headers())
+    if (iequals(k, name)) return v;
+  return {};
+}
+
+// "example.com:8080" -> "example.com", "[::1]:8080" -> "[::1]"
+std::string_view host_name(std::string_view host) {
+  auto const colon = host.rfind(':');
+  if (colon != std::string_view::npos && host.find(']', colon) == std::string_view::npos)
+    host = host.substr(0, colon);
+  return host;
+}
+
+std::optional<std::string> percent_decode(std::string_view const s) {
+  std::string out;
+  out.reserve(s.size());
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    if (s[i] == '%' && i + 2 < s.size()) {
+      unsigned char c = 0;
+      auto const [p, ec] = std::from_chars(s.data() + i + 1, s.data() + i + 3, c, 16);
+      if (ec == std::errc{} && p == s.data() + i + 3) {
+        if (c == '\0') return std::nullopt;
+        out += static_cast<char>(c);
+        i += 2;
+        continue;
       }
-
-      std::shared_ptr<mkn::kul::io::AReader> rr;
-      if (bin)
-        rr = std::make_shared<mkn::kul::io::BinaryReader>(f);
-      else
-        rr = std::make_shared<mkn::kul::io::Reader>(f);
-      char* s = 0;
-      while ((rr->read(s, 1024))) ss << s;
-      res.body(ss.str());
-    } else {
-      if (!ps.count(r) && ps.count("404")) r = "404";
-      if (ps.count(r)) {
-        auto p((*ps.find(r)).second->clone());
-        try {
-          p->pre(req);
-          res.body(*p->render());
-          p->post(req, res);
-        } catch (httplus::XXXError& e) {
-          e.recover(*p.get());
-        } catch (const mkn::kul::Exception& e) {
-          conf->err << mkn::kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__,
-                                                        mkn::kul::log::mode::ERR)
-                    << e.stack() << std::flush;
-        } catch (const std::exception& e) {
-          conf->err << mkn::kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__,
-                                                        mkn::kul::log::mode::ERR)
-                    << e.what() << std::flush;
-        } catch (...) {
-          conf->err << mkn::kul::LogMan::INSTANCE().str(__FILE__, __func__, __LINE__,
-                                                        mkn::kul::log::mode::ERR)
-                    << "Unknown exception in httplus Reponder" << std::flush;
-        }
-      } else
-        e = 1;
     }
-  } else
-    KEXCEPT(mkn::ram::http::Exception, "DENIED");
-  if (e) res.body("ERROR");
-
-#ifdef _HTTPLUS_ACCEPT_GZIP_
-  else {
-    if (req.headers().count("Accept-Encoding") &&
-        (*req.headers().find("Accept-Encoding")).second.find("gzip") != std::string::npos) {
-      std::string gz;
-      Gzipper::COMPRESS(res.body(), gz);
-      res.body(gz);
-      res.header("Content-Encoding", "gzip");
-    }
+    out += s[i];
   }
-#endif /* _HTTPLUS_ACCEPT_GZIP_ */
-  if (!res.header("Content-Type")) res.header("Content-Type", ct);
-  return res;
+  return out;
+}
+
+std::string read_file(fs::path const& path) {
+  std::ifstream in(path, std::ios::binary);
+  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+#ifdef HTTPLUS_ACCEPT_GZIP
+std::string gzip(std::string const& in) {
+  z_stream z{};
+  // 15 + 16: max window, gzip wrapper rather than zlib
+  if (deflateInit2(&z, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
+    KEXCEPT(httplus::http::Exception, "zlib deflateInit2 failed");
+  std::string out(deflateBound(&z, in.size()), '\0');
+  z.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(in.data()));
+  z.avail_in = static_cast<uInt>(in.size());
+  z.next_out = reinterpret_cast<Bytef*>(out.data());
+  z.avail_out = static_cast<uInt>(out.size());
+  auto const e = deflate(&z, Z_FINISH);
+  out.resize(z.total_out);
+  deflateEnd(&z);
+  if (e != Z_STREAM_END)
+    KEXCEPT(httplus::http::Exception, "zlib compression failed: " + std::to_string(e));
+  return out;
+}
+#endif /* HTTPLUS_ACCEPT_GZIP */
+
+void serve_file(httplus::http::Conf const& conf, fs::path const& file, httplus::Response& res) {
+  auto const ext = file.has_extension() ? file.extension().string().substr(1) : std::string{};
+  if (ext.empty())
+    res.header("Content-Type", "text/html; charset=utf-8");
+  else if (std::ranges::find(conf.text, ext) != conf.text.end())
+    res.header("Content-Type", "text/plain; charset=utf-8");
+  else if (auto const mime = mime_type(ext))
+    res.header("Content-Type", std::string(*mime));
+  else {
+    res.header("Content-Type", "application/octet-stream");
+    res.header("Content-Disposition", "attachment; filename=\"" + file.filename().string() + "\"");
+  }
+  res.body(read_file(file));
+}
+
+void status(httplus::Response& res, std::uint16_t const code, std::string const& reason) {
+  res.status(code);
+  res.reason(reason);
+}
+
+void render_page(httplus::http::Conf& conf, httplus::Page const& prototype,
+                 httplus::Request const& req, httplus::Response& res) {
+  auto const fail = [&](std::string const& what) {
+    res = httplus::Response{};
+    status(res, 500, "Internal Server Error");
+    res.body("Internal Server Error");
+    conf.error(what);
+  };
+
+  auto const page = prototype.clone();
+  try {
+    try {
+      page->pre(req);
+      res.body(*page->render());
+      page->post(req, res);
+    } catch (httplus::XXXError& e) {
+      e.recover(*page);
+      res.body(*page->render());
+    }
+  } catch (mkn::kul::Exception const& e) {
+    std::ostringstream ss;
+    ss << e.stack();
+    fail(ss.str());
+  } catch (std::exception const& e) {
+    fail(e.what());
+  } catch (...) {
+    fail("Unknown exception rendering: " + req.path());
+  }
+  if (!res.header("Content-Type")) res.header("Content-Type", "text/html; charset=utf-8");
+}
+
+}  // namespace
+
+httplus::http::Conf::Conf(fs::path const& root_, Pages pages_, std::string home_,
+                          std::vector<std::string> text_,
+                          std::unordered_map<std::string, std::string> headers_)
+    : root(fs::canonical(root_)),
+      pub(root / "pub"),
+      home(std::move(home_)),
+      text(std::move(text_)),
+      headers(std::move(headers_)),
+      pages(std::move(pages_)) {
+  fs::create_directories(pub);
+  fs::create_directories(root / "log");
+  _acc.open(root / "log" / "access.log", std::ios::app);
+  _err.open(root / "log" / "error.log", std::ios::app);
+  if (!_acc || !_err) KEXCEPT(Exception, "Cannot open logs in: " + (root / "log").string());
+}
+
+std::optional<fs::path> httplus::http::Conf::file(std::string_view const resource) const {
+  if (resource.empty()) return std::nullopt;
+  std::error_code ec;
+  auto const path = fs::weakly_canonical(pub / fs::path(resource).relative_path(), ec);
+  if (ec || !fs::is_regular_file(path, ec)) return std::nullopt;
+  // reject anything resolving outside pub/, e.g. "../" or symlinks
+  auto const [p, _] = std::mismatch(pub.begin(), pub.end(), path.begin(), path.end());
+  if (p != pub.end()) return std::nullopt;
+  return path;
+}
+
+void httplus::http::Conf::access(std::string_view const line) {
+  std::lock_guard<std::mutex> lock(_log_mutex);
+  _acc << line << std::endl;
+}
+
+void httplus::http::Conf::error(std::string_view const line) {
+  std::lock_guard<std::mutex> lock(_log_mutex);
+  _err << mkn::kul::DateTime::NOW() << " " << line << std::endl;
+}
+
+void httplus::http::AServer::add(std::string const& host, std::shared_ptr<Conf> const& conf) {
+  if (_confs.count(host))
+    KEXCEPT(Exception, host.empty() ? "Only one entry per port may omit 'host'"
+                                    : "Duplicate host on port: " + host);
+  _confs.emplace(host, conf);
+}
+
+httplus::Response httplus::http::respond(Request const& req, Confs const& confs) {
+  MKN_KUL_DBG_FUNC_ENTER;
+  Response res;
+
+  auto it = confs.find(std::string(host_name(header(req, "Host"))));
+  if (it == confs.end()) it = confs.find("");
+  if (it == confs.end()) {
+    status(res, 404, "Not Found");
+    res.body("Unknown host");
+    return res.withDefaultHeaders();
+  }
+  auto& conf = *it->second;
+
+  auto resource = percent_decode(req.path());
+  if (!resource) {
+    status(res, 400, "Bad Request");
+    res.body("Bad Request");
+    return res.withDefaultHeaders();
+  }
+  if (resource->starts_with('/')) resource->erase(0, 1);
+  if (resource->empty()) *resource = conf.home;
+
+  if (auto const file = conf.file(*resource))
+    serve_file(conf, *file, res);
+  else if (auto const page = conf.pages.find(*resource); page != conf.pages.end())
+    render_page(conf, *page->second, req, res);
+  else {
+    if (auto const nf = conf.pages.find("404"); nf != conf.pages.end())
+      render_page(conf, *nf->second, req, res);
+    else
+      res.body("Not Found");
+    if (res.status() == 200) status(res, 404, "Not Found");
+  }
+
+  for (auto const& [k, v] : conf.headers)
+    if (!res.header(k)) res.header(k, v);
+
+#ifdef HTTPLUS_ACCEPT_GZIP
+  if (!res.body().empty() && header(req, "Accept-Encoding").find("gzip") != std::string::npos) {
+    res.body(gzip(res.body()));
+    res.header("Content-Encoding", "gzip");
+    res.header("Vary", "Accept-Encoding");
+  }
+#endif /* HTTPLUS_ACCEPT_GZIP */
+
+  std::ostringstream line;
+  line << mkn::kul::DateTime::NOW() << " " << req.ip() << " " << req.method() << " \"" << req.path()
+       << "\" " << res.status() << " " << res.body().size();
+  conf.access(line.str());
+
+  return res.withDefaultHeaders();
 }

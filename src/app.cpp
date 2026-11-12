@@ -30,73 +30,161 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "httplus.hpp"
 
-void httplus::App::load(mkn::kul::hash::map::S2T<std::shared_ptr<http::AServer>>& http_orS,
-                        Sites& sites) KTHROW(httplus::Exception) {
-  std::shared_ptr<http::Conf> defHttp;
+#include "mkn/kul/log.hpp"
+#include "mkn/kul/string.hpp"
 
-  auto threads_lambda = [&](const YAML::Node& c) -> uint16_t {
-    if (c["threads"]) return mkn::kul::String::UINT16(c["threads"].Scalar());
-    if (config.root()["threads"])
-      return mkn::kul::String::UINT16(config.root()["threads"].Scalar());
-    return 1;
+#include <sstream>
+#include <unordered_map>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string scalar(YAML::Node const& node, std::string const& key, std::string const& def = "") {
+  if (!node) return def;
+  auto const value = node[key];
+  return value ? value.Scalar() : def;
+}
+
+std::uint8_t threads(YAML::Node const& entry, YAML::Node const& system) {
+  auto const s = scalar(entry, "threads", scalar(system, "threads", "1"));
+  auto const t = mkn::kul::String::UINT16(s);
+  if (t < 1 || t > 255) KEXCEPT(httplus::Exception, "threads must be between 1 and 255: " + s);
+  return static_cast<std::uint8_t>(t);
+}
+
+std::vector<std::string> words(std::string const& s) {
+  std::vector<std::string> v;
+  std::istringstream ss(s);
+  for (std::string w; ss >> w;) v.emplace_back(w);
+  return v;
+}
+
+std::unordered_map<std::string, std::string> headers(YAML::Node const& node) {
+  std::unordered_map<std::string, std::string> hs;
+  if (node)
+    for (auto const& kv : node) hs.emplace(kv.first.Scalar(), kv.second.Scalar());
+  return hs;
+}
+
+fs::path resolve(fs::path const& dir, std::string const& p) {
+  fs::path const path(p);
+  return path.is_relative() ? dir / path : path;
+}
+
+}  // namespace
+
+httplus::App& httplus::App::load(Sites const& sites) {
+  std::unordered_map<std::string, Pages const*> roots;  // canonical root -> pages
+  for (auto const& [dir, pages] : sites) {
+    std::error_code ec;
+    auto const root = fs::canonical(dir, ec);
+    if (ec) KEXCEPT(Exception, "Site directory does not exist: " + dir);
+    roots.emplace(root.string(), &pages);
+  }
+
+  auto const& yaml = config.root();
+  auto const system = yaml["system"];
+
+  auto const conf = [&](YAML::Node const& c) {
+    auto const root = resolve(config.dir(), c["root"].Scalar());
+    if (!fs::is_directory(root)) KEXCEPT(Exception, "Directory does not exist: " + root.string());
+    static Pages const none;
+    Pages const* pages = &none;
+    if (auto const it = roots.find(fs::canonical(root).string()); it != roots.end())
+      pages = it->second;
+    else
+      KOUT(NON) << "WARN: no generators for root, serving files only: " << root;
+    return std::make_shared<http::Conf>(root, *pages, scalar(c, "home"), words(scalar(c, "text")),
+                                        headers(c["header"]));
   };
 
-  if (config.root()["http"])
-    for (const YAML::Node& c : config.root()["http"]) {
-      if (defHttp && !c["host"]) KEXCEPTION("Only one http allowed without 'host' parameter");
-      const std::string& port(c["port"] ? c["port"].Scalar() : "80");
-      mkn::kul::Dir d(c["root"].Scalar());
-      if (!d) KEXCEPTION("Directory does not exist: " + c["root"].Scalar());
-      mkn::kul::Dir p("pub", d);
-      if (!p && !p.mk()) KEXCEPTION("Invalid access on directory: " + d.real());
-      std::string home(c["home"] ? c["home"].Scalar() : "");
-      const std::string txt(c["text"] ? c["text"].Scalar() : "");
-      const std::string hsh(std::to_string(std::hash<std::string>()(d.real())));
-      if (!sites.count(hsh)) {
-        KERR << "WARN: NO GENERATORS FOR HTTPS ROOT: " << d;
-        continue;
-      }
-      const Pages& pages((*sites.find(hsh)).second);
-      auto ser(
-          std::make_shared<http::Server>(mkn::kul::String::UINT16(port), threads_lambda(c), pages));
-      ser->confs.insert(c["host"].Scalar(),
-                        std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
-      http_orS.insert(port, ser);
+  if (auto const nodes = yaml["http"])
+    for (auto const& c : nodes) {
+      auto const port = mkn::kul::String::UINT16(scalar(c, "port", "80"));
+      auto& server = _servers[port];
+      if (!server)
+        server = std::make_shared<http::Server>(port, threads(c, system));
+      else if (!dynamic_cast<http::Server*>(server.get()))
+        KEXCEPT(Exception, "Port used for both http and https: " + std::to_string(port));
+      server->add(scalar(c, "host"), conf(c));
     }
-  if (config.root()["https"])
-    for (const YAML::Node& c : config.root()["https"]) {
-      mkn::kul::Dir d(c["root"].Scalar());
-      if (!d) KEXCEPTION("Directory does not exist: " + c["root"].Scalar());
-      mkn::kul::Dir p("pub", d);
-      if (!p && !p.mk()) KEXCEPTION("Invalid access on directory: " + d.real());
-      const std::string& port(c["port"] ? c["port"].Scalar() : "443");
-      const std::string hsh(std::to_string(std::hash<std::string>()(d.real())));
-      if (!sites.count(hsh)) {
-        KERR << "WARN: NO GENERATORS FOR HTTPS ROOT: " << d;
-        continue;
-      }
-      const Pages& pages((*sites.find(hsh)).second);
-      const std::string ssls([&] {
-        if (c["ssl_cyphers"]) return c["ssl_cyphers"].Scalar();
-        if (config.root()["ssl_cyphers"]) return config.root()["ssl_cyphers"].Scalar();
-        return std::string("");
-      }());
-      mkn::kul::File crt(c["crt"].Scalar());
-      if (!crt) KEXCEPTION("File does not exist: " + crt.full());
-      mkn::kul::File key(c["key"].Scalar());
-      if (!key) KEXCEPTION("File does not exist: " + key.full());
-      auto ser(std::make_shared<https::Server>(mkn::kul::String::UINT16(port), threads_lambda(c),
-                                               pages, crt, key, ssls));
-      ser->init();
+
+  if (auto const nodes = yaml["https"])
+    for (auto const& c : nodes) {
+      auto const port = mkn::kul::String::UINT16(scalar(c, "port", "443"));
+      if (_servers.count(port))
+        KEXCEPT(Exception, "Only one https entry allowed per port: " + std::to_string(port));
+      mkn::kul::File const crt(resolve(config.dir(), c["crt"].Scalar()).string());
+      if (!crt) KEXCEPT(Exception, "File does not exist: " + crt.full());
+      mkn::kul::File const key(resolve(config.dir(), c["key"].Scalar()).string());
+      if (!key) KEXCEPT(Exception, "File does not exist: " + key.full());
+      std::optional<mkn::kul::File> chain;
       if (c["chain"]) {
-        if (!mkn::kul::File(c["chain"].Scalar()))
-          KEXCEPTION("File does not exist: " + c["chain"].Scalar());
-        ser->setChain(c["chain"].Scalar());
+        chain.emplace(resolve(config.dir(), c["chain"].Scalar()).string());
+        if (!*chain) KEXCEPT(Exception, "File does not exist: " + chain->full());
       }
-      std::string home(c["home"] ? c["home"].Scalar() : "");
-      const std::string txt(c["text"] ? c["text"].Scalar() : "");
-      ser->confs.insert(c["host"].Scalar(),
-                        std::make_shared<http::Conf>(c["root"].Scalar(), home, txt));
-      http_orS.insert(port, ser);
+      auto const ciphers = scalar(c, "ssl_cyphers", scalar(system, "ssl_cyphers"));
+      auto server =
+          std::make_shared<https::Server>(port, threads(c, system), crt, key, ciphers, chain);
+      server->add(c["host"].Scalar(), conf(c));
+      _servers.emplace(port, server);
     }
+
+  return *this;
+}
+
+httplus::App& httplus::App::start() {
+  for (auto const& [port, server] : _servers) server->start();
+  return *this;
+}
+
+httplus::App& httplus::App::stop() {
+  for (auto const& [port, server] : _servers) server->stop();
+  return *this;
+}
+
+httplus::App& httplus::App::join() {
+  for (auto const& [port, server] : _servers) server->join();
+  return *this;
+}
+
+std::exception_ptr httplus::App::exception() const {
+  for (auto const& [port, server] : _servers)
+    if (auto e = server->exception()) return e;
+  return nullptr;
+}
+
+httplus::yaml::Conf httplus::yaml::Conf::CREATE(std::filesystem::path const& dir) {
+  auto const file = dir / "httplus.yaml";
+  if (!fs::is_regular_file(file)) KEXCEPTION("httplus.yaml does not exist: " + file.string());
+  return mkn::kul::yaml::File::CREATE<Conf>(file.string());
+}
+
+mkn::kul::yaml::Validator httplus::yaml::Conf::validator() const {
+  using namespace mkn::kul::yaml;
+
+  NodeValidator const system("system",
+                             {
+                                 NodeValidator("threads"),
+                                 NodeValidator("max_request_bytes"),
+                                 NodeValidator("ssl_cyphers"),
+                             },
+                             0, NodeType::MAP);
+
+  NodeValidator const headers("header", {NodeValidator("*")}, 0, NodeType::MAP);
+  NodeValidator const http(
+      "http",
+      {NodeValidator("root", 1), NodeValidator("text"), NodeValidator("host"),
+       NodeValidator("port"), NodeValidator("home"), NodeValidator("threads"), headers},
+      0, NodeType::LIST);
+  NodeValidator const https(
+      "https",
+      {NodeValidator("root", 1), NodeValidator("text"), NodeValidator("host", 1),
+       NodeValidator("port"), NodeValidator("crt", 1), NodeValidator("key", 1),
+       NodeValidator("chain"), NodeValidator("home"), NodeValidator("threads"),
+       NodeValidator("ssl_cyphers"), headers},
+      0, NodeType::LIST);
+  return Validator({system, http, https});
 }

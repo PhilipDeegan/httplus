@@ -1,2 +1,4 @@
 bin
 .mkn
+res/www/log
+res/www/pub
